@@ -16,6 +16,7 @@ from inspect_ai.util import sandbox
 from inspect_swe import claude_code
 from jsonschema import Draft202012Validator
 
+from evals.identity.prompt import PROMPT
 from evals.identity.stubs import OUTPUT, build
 from neuron_tracking.identity import IdentityMarks, evaluate
 
@@ -23,12 +24,6 @@ ROOT = Path(__file__).resolve().parents[2]
 MARKS = ROOT / "data" / "eval" / "identity_marks.json"
 SCHEMA = ROOT / "annotations.schema.json"
 VIDEO = ROOT / "data" / "IMG_6128.AVI"
-
-PROMPT = (
-    "Read annotate.md and format.md. Process all frames from IMG_6128.AVI. The red outline in "
-    "photo_2026-10-19_14-30-28.jpg marks the region whose neurons to annotate. "
-    "Save the annotations to output/annotations.json."
-)
 
 
 @solver

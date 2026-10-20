@@ -45,7 +45,7 @@ def test_prompt_files_do_not_mention_evaluation_locations(prompt):
 
 
 def test_only_annotations_json_is_requested():
-    from evals.identity.task import PROMPT
+    from evals.identity.prompt import PROMPT
 
     launch = [PROMPT, SCRIPT.read_text()]
     assert all("output/annotations.json" in text and "review record" not in text and "annotated AVI" not in text for text in launch)
