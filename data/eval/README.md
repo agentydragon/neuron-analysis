@@ -11,17 +11,9 @@ Regenerate with `uv run neuron-eval-frames --source data/IMG_6128.AVI --output d
 Copy each `frames/frame_NNN.png` to `marked/frame_NNN.png` and paint solid marks on cells; never edit
 `frames/`. A mark means "some part of this cell" (body or branch). One colour is one cell across every frame.
 Use a hard pencil with no antialiasing and no transparency; keep marks a few pixels wide and inside the cell.
-Use only these colours, none of which occur in the grayscale source:
-
-| Cell | Colour  | RGB             |
-| ---- | ------- | --------------- |
-| A    | red     | `255, 0, 0`     |
-| B    | green   | `0, 255, 0`     |
-| C    | blue    | `0, 0, 255`     |
-| D    | yellow  | `255, 255, 0`   |
-| E    | magenta | `255, 0, 255`   |
-| F    | cyan    | `0, 255, 255`   |
-| G    | orange  | `255, 128, 0`   |
-| H    | purple  | `128, 0, 255`   |
-| I    | pink    | `255, 128, 192` |
-| J    | lime    | `128, 255, 0`   |
+Outlines are fine: enclosed holes count as part of the mark.
+Use any solid colours that do not occur in the grayscale source; each exact RGB value is one cell, and no
+palette is fixed in advance. MS Paint's default swatches work, for example red `237,28,36`,
+orange `255,127,39`, green `34,177,76`, blue `0,162,232` and purple `163,73,164`.
+Reuse a colour only for the same cell in other frames.
+Pixels that differ from the original frame define the marks, so do not touch anything else, and save as PNG.
