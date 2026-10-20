@@ -170,8 +170,8 @@ def identity_scorer(variants: dict[str, Variant]):
         same, different, covered = report["same_cell"], report["different_cell"], report["marks_covered"]
         value = {
             "valid": 1.0,
-            "same_cell": same["passed"] / same["total"],
-            "different_cell": different["passed"] / different["total"],
+            "same_cell": same["score"],
+            "different_cell": different["score"],
             "marks_covered": covered["passed"] / covered["total"],
             "mark_share": report["mark_share"],
         }

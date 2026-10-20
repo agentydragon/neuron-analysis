@@ -178,6 +178,7 @@ class Owned:
     frame_index: int
     owners: frozenset[str]
     share: float  # fraction of the mark's pixels under the best-matching cell
+    shares: dict[str, float]  # each cell's part of the mark; a pixel under several cells is split evenly
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,16 @@ class Verdict:
         if self.kind == "same_cell":
             return both and bool(self.first.owners & self.second.owners)
         return both and not (len(self.first.owners) == 1 and self.first.owners == self.second.owners)
+
+    @property
+    def score(self) -> float:
+        """Pick a random pixel from each mark: the chance both are under the same cell (same-cell pairs) or under
+        two different cells (different-cell pairs). Unmatched pixels count for neither."""
+        first, second = self.first.shares, self.second.shares
+        same = sum(share * second.get(cell, 0.0) for cell, share in first.items())
+        if self.kind == "same_cell":
+            return same
+        return max(0.0, sum(first.values()) * sum(second.values()) - same)
 
 
 def from_annotations(annotations: Annotations) -> CellMasks:
@@ -212,18 +223,22 @@ def load_masks(raw: str | bytes) -> CellMasks:
     return parsed if isinstance(parsed, CellMasks) else from_annotations(parsed)
 
 
-def match_mark(mark: Pixels, masks: CellMasks, frame_index: int) -> tuple[frozenset[str], float]:
-    """Cells with the most mask pixels under the mark (ties keep every tied ID), and the share of the mark's
-    pixels that the best cell covers; 0 when no cell touches the mark."""
-    overlap: Counter[str] = Counter()
+def match_mark(mark: Pixels, masks: CellMasks, frame_index: int) -> tuple[frozenset[str], float, dict[str, float]]:
+    """Cells with the most mask pixels under the mark (ties keep every tied ID), the share of the mark's pixels
+    the best cell covers (0 when no cell touches it), and each cell's part of the mark, where a pixel under
+    several cells is split evenly between them."""
+    hits: dict[str, Pixels] = {}
     for entry in masks.masks:
         if entry.frame != frame_index:
             continue
-        for y, start, end in entry.mask:
-            overlap[entry.cell] += sum(1 for x in range(start, end) if (x, y) in mark)
-    best = max(overlap.values(), default=0)
-    owners = frozenset(cell for cell, count in overlap.items() if best > 0 and count == best)
-    return owners, best / len(mark)
+        hit = {(x, y) for y, start, end in entry.mask for x in range(start, end) if (x, y) in mark}
+        if hit:
+            hits[entry.cell] = hit
+    best = max((len(hit) for hit in hits.values()), default=0)
+    owners = frozenset(cell for cell, hit in hits.items() if len(hit) == best)
+    covering = Counter(pixel for hit in hits.values() for pixel in hit)
+    shares = {cell: sum(1 / covering[pixel] for pixel in hit) / len(mark) for cell, hit in hits.items()}
+    return owners, best / len(mark), shares
 
 
 def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
@@ -243,7 +258,13 @@ def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
 
 def summarize(items: list[Verdict]) -> dict:
     def describe(owned: Owned) -> dict:
-        return {"cell": owned.color, "frame": owned.frame_index, "predicted_ids": sorted(owned.owners), "share": round(owned.share, 3)}
+        return {
+            "cell": owned.color,
+            "frame": owned.frame_index,
+            "predicted_ids": sorted(owned.owners),
+            "share": round(owned.share, 3),
+            "shares": {cell: round(share, 3) for cell, share in sorted(owned.shares.items())},
+        }
 
     marks = {(v.first.group, v.first.color, v.first.frame_index): v.first for v in items} | {
         (v.second.group, v.second.color, v.second.frame_index): v.second for v in items
@@ -252,9 +273,12 @@ def summarize(items: list[Verdict]) -> dict:
     return {
         "marks_covered": {"passed": sum(bool(m.owners) for m in marks.values()), "total": len(marks)},
         "mark_share": sum(m.share for m in marks.values()) / len(marks) if marks else 0.0,
-        **{kind: {"passed": sum(v.passed for v in vs), "total": len(vs)} for kind, vs in totals.items()},
+        **{
+            kind: {"passed": sum(v.passed for v in vs), "total": len(vs), "score": sum(v.score for v in vs) / len(vs) if vs else 0.0}
+            for kind, vs in totals.items()
+        },
         "failures": [
-            {"group": v.first.group, "kind": v.kind, "first": describe(v.first), "second": describe(v.second)}
+            {"group": v.first.group, "kind": v.kind, "score": round(v.score, 3), "first": describe(v.first), "second": describe(v.second)}
             for v in items
             if not v.passed
         ],

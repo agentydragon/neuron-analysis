@@ -29,7 +29,11 @@ exactly but not its timestamps (constant 2 fps), and the agent is told the clip 
 
 Scores are `valid`, `same_cell`, `different_cell`, `marks_covered`, `mark_share` (all fractions) and `all_pass`.
 `mark_share` is the mean, over all marks, of the fraction of a mark's pixels under its best-matching predicted cell
-(0 for a mark no cell touches), so it also reflects a cell covering only part of a mark;
+(0 for a mark no cell touches). `same_cell` and `different_cell` are soft: for a pair of marks, pick a random pixel
+from each; a same-cell pair scores the chance both pixels are under the same predicted cell, a different-cell pair the
+chance they are under two different cells (a pixel under several cells is split evenly, unmatched pixels count for
+neither). With fully owned marks this is exactly pass/fail; split or partly covered marks give fractions. The
+`passed`/`total` pair counts stay in the score metadata, and `all_pass` still uses them;
 failing pairs are in the sample's score metadata.
 
 ## Sandbox

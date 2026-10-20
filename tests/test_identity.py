@@ -115,15 +115,15 @@ def test_scores_consistent_tracking(tmp_path):
     marks = derive(*make_eval(tmp_path, paint_two_cells))
     report = summarize(verdicts(masks_for(lambda index: "a"), marks))
     assert report["failures"] == []
-    assert report["same_cell"] == {"passed": 2, "total": 2}
-    assert report["different_cell"] == {"passed": 4, "total": 4}
+    assert report["same_cell"] == {"passed": 2, "total": 2, "score": 1.0}
+    assert report["different_cell"] == {"passed": 4, "total": 4, "score": 1.0}
     assert report["mark_share"] == 1.0
 
 
 def test_flags_identity_switch(tmp_path):
     marks = derive(*make_eval(tmp_path, paint_two_cells))
     report = summarize(verdicts(masks_for(lambda index: "a" if index == 0 else "c"), marks))
-    assert report["same_cell"] == {"passed": 1, "total": 2}
+    assert (report["same_cell"]["passed"], report["same_cell"]["total"], report["same_cell"]["score"]) == (1, 2, 0.5)
     assert [failure["kind"] for failure in report["failures"]] == ["same_cell"]
 
 
@@ -212,3 +212,40 @@ def test_mark_share_reflects_partial_coverage_splits_and_misses(tmp_path):
     assert summarize(verdicts(split, marks))["mark_share"] == pytest.approx((0.5 + 1.0 + 0 + 0) / 4)
     nothing = CellMasks(masks=[CellMask(cell="z", frame=0, mask=[(25, 1, 3)])])
     assert summarize(verdicts(nothing, marks))["mark_share"] == 0.0
+
+
+def test_pair_scores_are_fractions_for_split_and_partly_covered_marks(tmp_path):
+    marks = derive(*make_eval(tmp_path, paint_two_cells))  # red: x 4..7 at frame 0, x 5..8 at frame 1; blue: x 20..23
+    blue = [CellMask(cell="b", frame=index, mask=[(y, 20, 24) for y in range(20, 24)]) for index in (0, 1)]
+    # frame 0: the red mark is split evenly between a and c; frame 1: it is entirely under a
+    split = CellMasks(masks=[
+        CellMask(cell="a", frame=0, mask=[(y, 4, 6) for y in range(4, 8)]),
+        CellMask(cell="c", frame=0, mask=[(y, 6, 8) for y in range(4, 8)]),
+        CellMask(cell="a", frame=1, mask=[(y, 5, 9) for y in range(4, 8)]),
+        *blue,
+    ])
+    items = verdicts(split, marks)
+    same = next(v for v in items if v.kind == "same_cell" and v.first.color == "#ed1c24")
+    assert same.score == pytest.approx(0.5) and same.passed  # binary view: a owns the frame-1 mark and ties with c in frame 0
+    other = [v for v in items if v.kind == "different_cell"]
+    assert all(v.score == pytest.approx(1.0) for v in other)
+    report = summarize(items)
+    assert report["same_cell"]["score"] == pytest.approx((0.5 + 1.0) / 2)
+    assert report["different_cell"]["score"] == pytest.approx(1.0)
+    # the same cell covering only half of each red mark: 0.5 * 0.25 of random pixel pairs are under it in both
+    half = CellMasks(masks=[
+        *(CellMask(cell="a", frame=index, mask=[(y, 4, 6) for y in range(4, 8)]) for index in (0, 1)),
+        *blue,
+    ])
+    soft = next(v for v in verdicts(half, marks) if v.kind == "same_cell" and v.first.color == "#ed1c24")
+    assert soft.score == pytest.approx(0.5 * 0.25)
+
+
+def test_a_pixel_under_several_cells_is_split_evenly_between_them():
+    from cell_tracking.identity import match_mark
+
+    mark = {(x, y) for x in range(4) for y in range(2)}
+    twins = CellMasks(masks=[CellMask(cell=cell, frame=0, mask=[(y, 0, 4) for y in range(2)]) for cell in ("a", "b")])
+    owners, share, shares = match_mark(mark, twins, 0)
+    assert owners == {"a", "b"} and share == 1.0
+    assert shares == {"a": pytest.approx(0.5), "b": pytest.approx(0.5)}
