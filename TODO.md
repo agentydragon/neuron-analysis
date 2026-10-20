@@ -19,6 +19,12 @@
 - [ ] Pave a durable launch/resume procedure for long parallel Codex jobs and
       investigate their unexpected SIGTERM exits. Preserve each run's existing
       conversation, progress files, and native trace across restarts.
+- [ ] If the full identity eval turns out slow, expensive, or does not work easily, make
+      smaller, easier versions by cropping the video around the places the eval scores
+      (the marked cells in `data/eval/identity_marks.json`, in spatial boxes and in
+      frame ranges around each group) and scoring against the correspondingly shifted
+      marks. Keep the crops derived from the marks by a script, not hand-made, so the
+      scorer and the full task keep working unchanged.
 
 Compaction is allowed. Keep each run in one Codex conversation and persist the
 identity table, annotation revision, unresolved decisions, and review progress so
