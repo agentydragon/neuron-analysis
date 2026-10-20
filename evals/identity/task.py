@@ -15,6 +15,7 @@ The default agent, claude_cli, runs the Claude Code CLI in the sandbox with a su
 
 import json
 import os
+import shlex
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,6 +121,13 @@ def stub(mode: str, variants: dict[str, Variant]):
     return solve
 
 
+async def read_or_empty(path: str) -> str:
+    try:
+        return await sandbox().read_file(path)
+    except (FileNotFoundError, UnicodeDecodeError):
+        return ""
+
+
 @solver
 def claude_cli(model: str, effort: str | None, minutes: int):
     """Run `claude -p` in the sandbox, authenticated by a subscription token from the host environment."""
@@ -132,21 +140,25 @@ def claude_cli(model: str, effort: str | None, minutes: int):
                    "--output-format", "stream-json", "--verbose"]
         if effort:
             command += ["--effort", effort]
+        # Output goes to files in the sandbox so a timeout still leaves a transcript to collect.
+        shell = f"exec {shlex.join(command)} > /tmp/claude_stream.jsonl 2> /tmp/claude_stderr.txt"
         started = time.time()
+        returncode: int | None = None
         try:
-            result = await sandbox().exec(command, cwd="/workspace", user="agent",
+            result = await sandbox().exec(["bash", "-c", shell], cwd="/workspace", user="agent",
                                           env={"CLAUDE_CODE_OAUTH_TOKEN": token, "HOME": "/home/agent",
                                                "PATH": "/workspace/.venv/bin:/usr/local/bin:/usr/bin:/bin"},
                                           timeout=minutes * 60, timeout_retry=False)
-            stream, returncode, stderr = result.stdout, result.returncode, result.stderr
+            returncode = result.returncode
         except TimeoutError:
-            stream, returncode, stderr = "", None, f"timed out after {minutes} minutes"
+            pass
+        stream, stderr = await read_or_empty("/tmp/claude_stream.jsonl"), await read_or_empty("/tmp/claude_stderr.txt")
         folder = ROOT / "runs" / "transcripts"
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}_{model}_{effort or 'default'}.jsonl"
         path.write_text(stream)
-        transcript().info({"returncode": returncode, "seconds": round(time.time() - started), "stream": str(path),
-                           "stderr": stderr[-2000:]}, source="claude_cli")
+        transcript().info({"returncode": returncode, "timed_out": returncode is None, "seconds": round(time.time() - started),
+                           "stream": str(path), "stderr": stderr[-2000:]}, source="claude_cli")
         return state
 
     return solve
@@ -161,8 +173,12 @@ def identity_scorer(variants: dict[str, Variant]):
             text = await sandbox().read_file(OUTPUT)
         except FileNotFoundError:
             return failed("output/annotations.json was not written")
+        saved = ROOT / "runs" / "outputs" / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}.annotations.json"
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        saved.write_text(text)
         try:
-            errors = sorted(validator.iter_errors(json.loads(text)), key=lambda error: list(error.path))
+            document = json.loads(text)
+            errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
         except json.JSONDecodeError as error:
             return failed(f"annotations.json is not JSON: {error}")
         if errors:
@@ -178,6 +194,8 @@ def identity_scorer(variants: dict[str, Variant]):
             "marks_covered": covered["passed"] / covered["total"],
         }
         value["all_pass"] = float(not report["failures"] and value["marks_covered"] == 1.0)
+        report["neurons"] = len(document["neurons"])
+        report["saved_annotations"] = str(saved)
         return Score(value=value, explanation=json.dumps({key: report[key] for key in report if key != "valid"}), metadata=report)
 
     return score
@@ -213,7 +231,7 @@ def build_task(variants: list[Variant], agent: str, model: str, effort: str | No
         solver=solver_,
         scorer=identity_scorer(by_id),
         sandbox=("docker", str(ROOT / compose)),
-        time_limit=minutes * 60,
+        time_limit=(minutes + 5) * 60,  # setup and scoring happen inside the sample limit
     )
 
 
