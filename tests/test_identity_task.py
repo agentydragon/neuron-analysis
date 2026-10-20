@@ -61,3 +61,13 @@ def test_claude_code_web_launcher_and_compose_stay_consistent():
     assert sp.run(["bash", "-n", str(folder / "run-claude-code-web.sh")]).returncode == 0
     image = lambda name: re.search(r"^\s*image: (\S+)", (folder / name).read_text(), re.M).group(1)
     assert image("compose.yaml") == image("compose.claude-code-web.yaml")
+
+
+def test_agent_facing_prompt_does_not_call_the_cells_neurons():
+    import re
+
+    from evals.identity.prompt import PROMPT
+
+    launch_line = next(line for line in SCRIPT.read_text().splitlines() if "Read annotate.md" in line)
+    text = (ROOT / "tasks" / "identity" / "annotate.md").read_text() + PROMPT + launch_line
+    assert not re.search(r"neuron(?!-render)", text, re.I)

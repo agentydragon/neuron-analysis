@@ -34,3 +34,10 @@ uv run neuron-identity check \
 
 Passing means the marked cells keep consistent, distinct identities. It says nothing
 about extra neurons, missed unmarked cells or mask boundaries; see `data/eval/README.md`.
+
+## Terminology
+
+The agent-facing files (`annotate.md`, `target.md`, the launch prompt) say "cells" and "dark cells",
+and `target.md` states that cell type is not asserted, because it is not yet confirmed that these are
+neurons. The schema's field names (`neurons`, `neuron_id`) and the `neuron-*` tool names are unchanged;
+`format.md` says so. See the terminology item in `TODO.md`.

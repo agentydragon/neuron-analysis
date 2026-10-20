@@ -1,29 +1,31 @@
 # Identity annotation format
 
 The saved `annotations.json` conforms to `annotations.schema.json` and holds
-full-resolution pixel masks for every neuron in every included frame. Coordinates
+full-resolution pixel masks for every cell in every included frame. Coordinates
 refer to the decoded source image: integer `(x, y)` is column `x`, row `y`, with
 `(0, 0)` at the top left. Frame indices start at zero; timestamps keep the source
 presentation times.
 
-Each neuron/frame observation has three mask fields, used like this in this task:
+Each cell/frame observation has three mask fields, used like this in this task:
 
-- `body`: every pixel you can attribute to this neuron in this frame, soma and
+- `body`: every pixel you can attribute to this cell in this frame, soma and
   attached processes together. There is no body/branch distinction here.
 - `branches`: always `[]`. The field stays because the shared schema and renderer
   require it.
 - `uncertain`: candidate pixels whose ownership you cannot resolve. These are
   excluded from `body`, are optional, and must be reported as unresolved.
 
-Within an observation the masks do not overlap. Masks of different neurons are
+Within an observation the masks do not overlap. Masks of different cells are
 independent, so ambiguous ownership at a crossing can stay uncertain instead of
-being forced onto one neuron.
+being forced onto one cell.
 
 Encode each mask losslessly as horizontal runs `[y, x_start, x_end]` with an
 exclusive `x_end`: `[10, 20, 23]` is exactly pixels `(20, 10)`, `(21, 10)` and
 `(22, 10)`. Runs need integer bounds with `0 <= y < height` and
 `0 <= x_start < x_end <= width`, must not overlap within a mask, are sorted by row
 and starting column, and touching runs are coalesced. An empty mask is `[]`.
+
+The schema's field names (`neurons`, `neuron_id`) are historical. Each entry in `neurons` is one cell, and no claim is made about its cell type.
 
 A synthetic example, not an annotation of the sample:
 
@@ -57,7 +59,7 @@ A synthetic example, not an annotation of the sample:
 ```
 
 `visibility` is `visible`, `uncertain`, `not_visible` or `out_of_frame`; `review` is
-`proposed`, `agent_reviewed` or `human_reviewed`. Keep one observation per neuron
+`proposed`, `agent_reviewed` or `human_reviewed`. Keep one observation per cell
 per included frame, including explicit absence states. `not_visible` and
 `out_of_frame` observations have empty masks.
 
@@ -66,5 +68,5 @@ interpolating mask labels. Edit by tracing, brushes, polygons or computed
 proposals as useful, then save and inspect the resulting pixel masks.
 
 The schema checks structure only. Separately validate run bounds, mask
-disjointness, unique neuron/frame observations, complete frame coverage and
+disjointness, unique cell/frame observations, complete frame coverage and
 frame/ID references. A schema-valid file can still contain wrong masks.
