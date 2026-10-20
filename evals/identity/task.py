@@ -122,9 +122,9 @@ def claude_cli(model: str, effort: str | None, minutes: int):
     """Run `claude -p` in the sandbox, authenticated by a subscription token from the host environment."""
 
     async def solve(state: TaskState, generate: Generate) -> TaskState:
-        token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-        if not token:
+        if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
             raise RuntimeError("Set CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) to run agent=claude_cli")
+        # The compose file passes the token into the container; passing it here would put it in Inspect's logs.
         command = ["claude", "-p", state.input_text, "--model", model, "--dangerously-skip-permissions",
                    "--output-format", "stream-json", "--verbose"]
         if effort:
@@ -135,8 +135,7 @@ def claude_cli(model: str, effort: str | None, minutes: int):
         returncode: int | None = None
         try:
             result = await sandbox().exec(["bash", "-c", shell], cwd="/workspace", user="agent",
-                                          env={"CLAUDE_CODE_OAUTH_TOKEN": token, "HOME": "/home/agent",
-                                               "PATH": "/workspace/.venv/bin:/usr/local/bin:/usr/bin:/bin"},
+                                          env={"HOME": "/home/agent", "PATH": "/workspace/.venv/bin:/usr/local/bin:/usr/bin:/bin"},
                                           timeout=minutes * 60, timeout_retry=False)
             returncode = result.returncode
         except TimeoutError:

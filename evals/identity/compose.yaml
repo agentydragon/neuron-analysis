@@ -4,3 +4,6 @@ services:
     init: true
     command: tail -f /dev/null
     working_dir: /workspace
+    environment:
+      # Passed through from the host when set, so the token never appears in the commands Inspect logs.
+      CLAUDE_CODE_OAUTH_TOKEN:

@@ -9,6 +9,8 @@ services:
     volumes:
       - /root/.ccr/ca-bundle.crt:/etc/ssl/proxy-ca.crt:ro
     environment:
+      # Passed through from the host when set, so the token never appears in the commands Inspect logs.
+      CLAUDE_CODE_OAUTH_TOKEN:
       SSL_CERT_FILE: /etc/ssl/proxy-ca.crt
       REQUESTS_CA_BUNDLE: /etc/ssl/proxy-ca.crt
       PIP_CERT: /etc/ssl/proxy-ca.crt

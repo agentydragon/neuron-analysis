@@ -73,7 +73,8 @@ that session's own login. Three environment-specific steps, all in the script or
 3. The network re-signs TLS with a private CA, so `compose.claude-code-web.yaml` mounts
    `/root/.ccr/ca-bundle.crt` into the sandbox and points pip, npm and Python at it.
 
-What this exposes: the token is in the environment of the processes the agent runs, so the agent can read
+What this exposes (the token reaches the container through the compose file's `environment` pass-through, not
+through Inspect's exec options, so it is not written into the eval logs; check a log before sharing one): the token is in the environment of the processes the agent runs, so the agent can read
 it. Treat it as the session's login: it is scoped to that session, never written to a file or to Git by
 this code, and the saved transcripts do not contain it unless the agent echoes it, so keep `runs/` out of
 Git and do not share it. Runs use the session's subscription allowance, so long runs count against it.
