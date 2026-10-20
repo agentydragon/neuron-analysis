@@ -32,7 +32,7 @@ def build(marks: IdentityMarks, video: Path, *, mode: str) -> str:
             body = [list(run) for run in runs.get(frame["frame_index"], [])]
             observations.append(
                 {
-                    "neuron_id": identity,
+                    "cell_id": identity,
                     "frame_index": frame["frame_index"],
                     "visibility": "visible" if body else "not_visible",
                     "body": body,
@@ -48,7 +48,7 @@ def build(marks: IdentityMarks, video: Path, *, mode: str) -> str:
             "revision": 1,
             "source": {"path": source.path, "sha256": source.sha256, "width": source.width, "height": source.height},
             "frames": frames,
-            "neurons": neurons,
+            "cells": neurons,
             "observations": observations,
         }
     )

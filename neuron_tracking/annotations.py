@@ -1,5 +1,6 @@
 """Pixel annotation models and image-dependent validation."""
 
+import json
 from collections.abc import Iterator
 from enum import StrEnum
 from itertools import pairwise
@@ -7,8 +8,22 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
-type Run = tuple[StrictInt, StrictInt, StrictInt]
-type Mask = list[Run]
+# The json_schema_extra bounds only describe the published schema; the model validator checks run bounds.
+type Run = tuple[
+    Annotated[StrictInt, Field(json_schema_extra={"minimum": 0})],
+    Annotated[StrictInt, Field(json_schema_extra={"minimum": 0})],
+    Annotated[StrictInt, Field(json_schema_extra={"minimum": 1})],
+]
+type Mask = Annotated[
+    list[Run],
+    Field(
+        description=(
+            "Lossless horizontal runs [y, x_start, x_end] with an exclusive x_end: [10, 20, 23] is exactly pixels "
+            "(20, 10), (21, 10) and (22, 10). Runs have integer bounds, are sorted by row and then starting column, "
+            "must not overlap within a mask, and touching runs are coalesced. An empty mask is []."
+        )
+    ),
+]
 
 
 def mask_center(mask: Mask) -> tuple[float, float] | None:
@@ -45,29 +60,49 @@ class Record(BaseModel):
 
 
 class Source(Record):
+    """The video that was annotated."""
+
     path: Annotated[str, Field(min_length=1)]
-    sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
-    width: Annotated[StrictInt, Field(gt=0)]
-    height: Annotated[StrictInt, Field(gt=0)]
+    sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$", description="SHA-256 of the video file.")]
+    width: Annotated[StrictInt, Field(gt=0, description="Decoded frame width in pixels.")]
+    height: Annotated[StrictInt, Field(gt=0, description="Decoded frame height in pixels.")]
 
 
 class Frame(Record):
-    frame_index: Annotated[StrictInt, Field(ge=0)]
-    timestamp_s: float
+    frame_index: Annotated[StrictInt, Field(ge=0, description="Index in decode order, starting at zero.")]
+    timestamp_s: Annotated[float, Field(description="Presentation time in seconds; strictly increasing across frames.")]
 
 
-class Neuron(Record):
-    id: Annotated[str, Field(min_length=1)]
-    color: Annotated[str, Field(pattern="^#[0-9a-fA-F]{6}$")]
+class CellIdentity(Record):
+    id: Annotated[str, Field(min_length=1, description="Persistent across all frames.")]
+    color: Annotated[str, Field(pattern="^#[0-9a-fA-F]{6}$", description="Distinct per cell; used to render it.")]
 
 
 class Observation(Record):
-    neuron_id: str
+    """One cell in one frame."""
+
+    cell_id: Annotated[str, Field(description="The id of the cell in `cells`.")]
     frame_index: Annotated[StrictInt, Field(ge=0)]
-    visibility: Visibility
-    body: Mask
-    branches: Mask
-    uncertain: Mask
+    visibility: Annotated[
+        Visibility,
+        Field(
+            description=(
+                "Describes the observation as a whole. not_visible and out_of_frame observations have empty masks; "
+                "the uncertain mask describes specific ambiguous pixels even when other parts are visible."
+            )
+        ),
+    ]
+    body: Annotated[Mask, Field(description="Pixels of the cell body (soma).")]
+    branches: Annotated[Mask, Field(description="Pixels of its visible processes, including their full width and tips.")]
+    uncertain: Annotated[
+        Mask,
+        Field(
+            description=(
+                "Candidate pixels whose ownership or body/branch classification cannot be resolved. They are "
+                "excluded from body and branches and must be reported as unresolved."
+            )
+        ),
+    ]
     review: Review
 
     def iter_masks(self) -> Iterator[tuple[Part, Mask]]:
@@ -77,12 +112,20 @@ class Observation(Record):
 
 
 class Annotations(Record):
+    """Pixel masks of cells in a microscopy clip, saved as annotations.json."""
+
     schema_version: Annotated[StrictInt, Field(ge=1, le=1)]
-    revision: Annotated[StrictInt, Field(ge=1)]
+    revision: Annotated[StrictInt, Field(ge=1, description="Starts at 1; increase it when you save a changed annotation.")]
     source: Source
-    frames: Annotated[list[Frame], Field(min_length=1)]
-    neurons: list[Neuron]
-    observations: list[Observation]
+    frames: Annotated[
+        list[Frame],
+        Field(min_length=1, description="Every included source frame, in order, with its presentation time."),
+    ]
+    cells: Annotated[list[CellIdentity], Field(description="One entry per cell identity.")]
+    observations: Annotated[
+        list[Observation],
+        Field(description="One observation per cell per included frame, including frames where the cell is absent."),
+    ]
 
     @model_validator(mode="after")
     def validate_masks_and_references(self) -> Self:
@@ -92,15 +135,15 @@ class Annotations(Record):
         times = [frame.timestamp_s for frame in self.frames]
         if any(right <= left for left, right in pairwise(times)):
             raise ValueError("Source timestamps must strictly increase")
-        ids = {neuron.id for neuron in self.neurons}
-        if len(ids) != len(self.neurons):
+        ids = {cell.id for cell in self.cells}
+        if len(ids) != len(self.cells):
             raise ValueError("Duplicate neuron ID")
-        if len({neuron.color.lower() for neuron in self.neurons}) != len(ids):
-            raise ValueError("Neuron colors must be distinct")
+        if len({cell.color.lower() for cell in self.cells}) != len(ids):
+            raise ValueError("Cell colors must be distinct")
         frames = set(indices)
         pairs: set[tuple[str, int]] = set()
         for observation in self.observations:
-            pair = observation.neuron_id, observation.frame_index
+            pair = observation.cell_id, observation.frame_index
             if pair in pairs or pair[0] not in ids or pair[1] not in frames:
                 raise ValueError(f"Duplicate or unreferenced observation: {pair}")
             pairs.add(pair)
@@ -126,3 +169,16 @@ class Annotations(Record):
         if len(pairs) != len(ids) * len(frames):
             raise ValueError("Need one observation per neuron per included frame")
         return self
+
+
+def parse_annotations(raw: str | bytes) -> Annotations:
+    """Parse annotation JSON; files saved before the format said cells (neurons, neuron_id) are accepted."""
+    document = json.loads(raw)
+    if isinstance(document, dict) and "neurons" in document and "cells" not in document:
+        document = {("cells" if key == "neurons" else key): value for key, value in document.items()}
+        document["observations"] = [
+            {("cell_id" if key == "neuron_id" else key): value for key, value in row.items()} if isinstance(row, dict) else row
+            for row in document.get("observations", [])
+        ]
+        raw = json.dumps(document)
+    return Annotations.model_validate_json(raw)

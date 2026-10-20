@@ -11,7 +11,7 @@ from typing import Annotated, Self
 from PIL import Image
 from pydantic import Field, StrictInt, ValidationError, model_validator
 
-from neuron_tracking.annotations import Annotations, Mask, Record, Source
+from neuron_tracking.annotations import Annotations, Mask, Record, Source, parse_annotations
 from neuron_tracking.render import hash_file
 
 type Pixels = set[tuple[int, int]]
@@ -198,7 +198,7 @@ def owners_of(mark: Pixels, annotations: Annotations, frame_index: int) -> froze
             continue
         for _, mask in observation.iter_masks():
             for y, start, end in mask:
-                overlap[observation.neuron_id] += sum(1 for x in range(start, end) if (x, y) in mark)
+                overlap[observation.cell_id] += sum(1 for x in range(start, end) if (x, y) in mark)
     best = max(overlap.values(), default=0)
     return frozenset(neuron for neuron, count in overlap.items() if best > 0 and count == best)
 
@@ -246,7 +246,7 @@ def summarize(items: list[Verdict]) -> dict:
 def evaluate(annotations_json: str | bytes, marks: IdentityMarks) -> dict:
     """Score annotation JSON text; malformed or mismatched input is reported, not raised."""
     try:
-        annotations = Annotations.model_validate_json(annotations_json)
+        annotations = parse_annotations(annotations_json)
         report = summarize(verdicts(annotations, marks))
     except (ValidationError, ValueError) as error:
         return {"valid": False, "reason": str(error)[:2000]}
@@ -270,7 +270,7 @@ def main() -> None:
         print(json.dumps({group.name: [cell.color for cell in group.cells] for group in marks.groups}))
         return
     items = verdicts(
-        Annotations.model_validate_json(arguments.annotations.read_bytes()),
+        parse_annotations(arguments.annotations.read_bytes()),
         IdentityMarks.model_validate_json(arguments.marks.read_bytes()),
     )
     report = summarize(items)

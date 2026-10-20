@@ -8,7 +8,8 @@ renderer and scorer are the same as for the full task.
 
 Files here are the annotation agent's inputs: `annotate.md` (prompt), `target.md` (the sample's target
 region, adapted from `sample_task.md` without its body/branch separation) and `annotations.schema.json`
-(the shared schema plus descriptions, in place of a separate format document, and an example). The agent
+(generated from the same pydantic model as the shared schema, with identity-task descriptions and an example,
+in place of a separate format document). The agent
 also gets the video and the reference image, uploaded as `target.jpg`.
 
 ## Run
@@ -40,5 +41,5 @@ about extra neurons, missed unmarked cells or mask boundaries; see `data/eval/RE
 
 The agent-facing files (`annotate.md`, `target.md`, the launch prompt) say "cells" and "dark cells",
 and `target.md` states that cell type is not asserted, because it is not yet confirmed that these are
-neurons. The schema's field names (`neurons`, `neuron_id`) and the `neuron-*` tool names are unchanged;
-the schema's descriptions say so. See the terminology item in `TODO.md`.
+neurons. Neither schema uses the word: the fields are `cells` and `cell_id`. The `neuron-*` tool names and the
+package name are unchanged. See the terminology item in `TODO.md`.

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from neuron_tracking.annotations import Annotations, Frame, Neuron, Observation, Review, Source, Visibility
+from neuron_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
 from neuron_tracking.check import DistinctCheck, Match, RegionCheck, SampleChecks, check_annotations, main
 
 
@@ -17,7 +17,7 @@ def make_annotations(count: int) -> Annotations:
         x, y = 20 + index % 7 * 10, 20 + index // 7 * 10
         observations.append(
             Observation(
-                neuron_id=f"cell-{index}",
+                cell_id=f"cell-{index}",
                 frame_index=3,
                 visibility=Visibility.VISIBLE,
                 body=[(y, x, x + 3)],
@@ -31,7 +31,7 @@ def make_annotations(count: int) -> Annotations:
         revision=1,
         source=Source(path="synthetic_clip.avi", sha256="0" * 64, width=128, height=96),
         frames=[Frame(frame_index=3, timestamp_s=1.5)],
-        neurons=[Neuron(id=f"cell-{i}", color=f"#{i + 1:06x}") for i in range(count)],
+        cells=[CellIdentity(id=f"cell-{i}", color=f"#{i + 1:06x}") for i in range(count)],
         observations=observations,
     )
 

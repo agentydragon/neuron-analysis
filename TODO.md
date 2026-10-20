@@ -31,7 +31,7 @@
       then the identity task's agent-facing text says "dark cells" and states that cell type is
       not asserted. Once confirmed, clean up the terminology: the prompts and `target.md` in
       `tasks/identity/`, `annotate.md`, `sample_task.md`, the READMEs and debug notes, the schema
-      field names (`neurons`, `neuron_id`), the `neuron-*` tool names, the package and repo
+      `neuron-*` tool names, the package and repo
       names, and the eval names. Also decide whether the marks in `data/eval/` still describe
       the intended cells.
 

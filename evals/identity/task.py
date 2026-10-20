@@ -194,7 +194,7 @@ def identity_scorer(variants: dict[str, Variant]):
             "marks_covered": covered["passed"] / covered["total"],
         }
         value["all_pass"] = float(not report["failures"] and value["marks_covered"] == 1.0)
-        report["neurons"] = len(document["neurons"])
+        report["cells"] = len(document["cells"])
         report["saved_annotations"] = str(saved)
         return Score(value=value, explanation=json.dumps({key: report[key] for key in report if key != "valid"}), metadata=report)
 

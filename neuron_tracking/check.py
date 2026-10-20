@@ -10,7 +10,7 @@ from typing import Annotated, Self
 
 from pydantic import Field, StrictInt, model_validator
 
-from neuron_tracking.annotations import Annotations, Frame, Mask, Record, Source, mask_center
+from neuron_tracking.annotations import Annotations, Frame, Mask, Record, Source, mask_center, parse_annotations
 
 
 class Match(StrEnum):
@@ -122,7 +122,7 @@ def check_annotations(annotations: Annotations, checks: SampleChecks) -> Report:
     results = [
         Result(
             check=check,
-            neuron_ids=tuple(sorted(o.neuron_id for o in observations if matches_body(body=o.body, check=check))),
+            neuron_ids=tuple(sorted(o.cell_id for o in observations if matches_body(body=o.body, check=check))),
         )
         for check in checks.regions
     ]
@@ -142,7 +142,7 @@ def main() -> None:
     parser.add_argument("--checks", required=True, type=Path)
     arguments = parser.parse_args()
     report = check_annotations(
-        annotations=Annotations.model_validate_json(arguments.annotations.read_bytes()),
+        annotations=parse_annotations(arguments.annotations.read_bytes()),
         checks=SampleChecks.model_validate_json(arguments.checks.read_bytes()),
     )
     print(

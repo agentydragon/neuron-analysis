@@ -10,7 +10,7 @@ import pytest
 from PIL import Image
 from pydantic import ValidationError
 
-from neuron_tracking.annotations import Annotations, Frame, Neuron, Observation, Review, Source, Visibility
+from neuron_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
 from neuron_tracking.render import Layer, RenderReport, hash_file, render, render_frame
 
 
@@ -20,7 +20,7 @@ def make_annotations(source: Path, timestamps: list[float]) -> Annotations:
         for identity, x, y in (("N001", 20 if index % 2 == 0 else 80, 30), ("N002", 80 if index % 2 == 0 else 20, 60)):
             observations.append(
                 Observation(
-                    neuron_id=identity,
+                    cell_id=identity,
                     frame_index=index,
                     visibility=Visibility.VISIBLE,
                     body=[(y, x, x + 3)],
@@ -34,7 +34,7 @@ def make_annotations(source: Path, timestamps: list[float]) -> Annotations:
         revision=7,
         source=Source(path=str(source), sha256=hash_file(source), width=128, height=96),
         frames=[Frame(frame_index=i, timestamp_s=t) for i, t in enumerate(timestamps)],
-        neurons=[Neuron(id="N001", color="#ff0000"), Neuron(id="N002", color="#0000ff")],
+        cells=[CellIdentity(id="N001", color="#ff0000"), CellIdentity(id="N002", color="#0000ff")],
         observations=observations,
     )
 
@@ -135,9 +135,9 @@ def test_invalid_annotations_are_rejected(sample: tuple[Path, Path, Annotations]
         case "touching":
             observation["body"] = [[30, 20, 23], [30, 23, 25]]
         case "colors":
-            data["neurons"][1]["color"] = "#FF0000"
+            data["cells"][1]["color"] = "#FF0000"
         case "reference":
-            observation["neuron_id"] = "missing"
+            observation["cell_id"] = "missing"
         case "missing":
             data["observations"].pop()
         case "absent":

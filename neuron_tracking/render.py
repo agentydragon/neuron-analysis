@@ -13,7 +13,7 @@ import av
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 from pydantic import BaseModel
 
-from neuron_tracking.annotations import Annotations, Mask, Part, mask_center
+from neuron_tracking.annotations import Annotations, Mask, Part, mask_center, parse_annotations
 
 
 class Layer(StrEnum):
@@ -48,17 +48,17 @@ def render_frame(
 ) -> Image.Image:
     if image.size != (annotations.source.width, annotations.source.height):
         raise ValueError("Decoded frame dimensions differ from annotation source")
-    colors: dict[str, tuple[int, ...]] = {neuron.id: ImageColor.getrgb(neuron.color) for neuron in annotations.neurons}
+    colors: dict[str, tuple[int, ...]] = {neuron.id: ImageColor.getrgb(neuron.color) for neuron in annotations.cells}
     overlay = Image.new("RGBA", image.size)
     draw = ImageDraw.Draw(overlay)
     anchors: list[tuple[str, tuple[float, float]]] = []
     observations = sorted(
-        (o for o in annotations.observations if o.frame_index == frame_index and o.neuron_id in neuron_ids),
-        key=lambda o: o.neuron_id,
+        (o for o in annotations.observations if o.frame_index == frame_index and o.cell_id in neuron_ids),
+        key=lambda o: o.cell_id,
     )
     for observation in observations:
         displayed: Mask = []
-        color = colors[observation.neuron_id]
+        color = colors[observation.cell_id]
         for part, mask in observation.iter_masks():
             if layer != Layer.COMBINED and Part(layer) != part:
                 continue
@@ -73,7 +73,7 @@ def render_frame(
                         for x in range(start, end):
                             draw.point((x, y), fill=(*color, 180 if (x + y) % 4 < 2 else 45))
         if (center := mask_center(displayed)) is not None:
-            anchors.append((observation.neuron_id, center))
+            anchors.append((observation.cell_id, center))
     if labels:
         draw_labels(draw, anchors, colors=colors, size=image.size)
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
@@ -134,13 +134,13 @@ def render(
     labels: bool,
 ) -> RenderReport:
     annotation_bytes = annotation_path.read_bytes()
-    annotations = Annotations.model_validate_json(annotation_bytes)
+    annotations = parse_annotations(annotation_bytes)
     if hash_file(source) != annotations.source.sha256:
         raise ValueError("Source SHA-256 differs from annotations")
     report_path = output.with_suffix(output.suffix + ".json")
     if any(path.resolve() in (source.resolve(), annotation_path.resolve()) for path in (output, report_path)):
         raise ValueError("Output would overwrite an input")
-    all_ids = {neuron.id for neuron in annotations.neurons}
+    all_ids = {neuron.id for neuron in annotations.cells}
     selected = all_ids if neuron_ids is None else neuron_ids
     if selected - all_ids:
         raise ValueError(f"Unknown neuron IDs: {sorted(selected - all_ids)}")
@@ -200,7 +200,7 @@ def render(
             revision=annotations.revision,
             layer=layer,
             labels=labels,
-            neuron_colors={neuron.id: neuron.color for neuron in annotations.neurons if neuron.id in selected},
+            neuron_colors={neuron.id: neuron.color for neuron in annotations.cells if neuron.id in selected},
             frame_indices=indices,
             source_timestamps_s=[frames[index] for index in indices],
             output_timestamps_s=output_times,

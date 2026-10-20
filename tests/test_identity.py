@@ -34,7 +34,7 @@ def paint_two_cells(index, draw):
 
 
 def annotations(owner_of_red):
-    """Neuron 'a' sits under the red marks and 'b' under blue, unless owner_of_red says otherwise."""
+    """CellIdentity 'a' sits under the red marks and 'b' under blue, unless owner_of_red says otherwise."""
     boxes = {"a": (4, 4, 9, 8), "b": (20, 20, 24, 24), "c": (30, 2, 34, 6)}
     observations = []
     for index in (0, 1):
@@ -46,7 +46,7 @@ def annotations(owner_of_red):
                 runs = [[y, 4, 9] for y in range(4, 8)]
             observations.append(
                 {
-                    "neuron_id": neuron,
+                    "cell_id": neuron,
                     "frame_index": index,
                     "visibility": "visible" if runs else "not_visible",
                     "body": runs,
@@ -62,7 +62,7 @@ def annotations(owner_of_red):
             "revision": 1,
             "source": {"path": "clip.avi", "sha256": "a" * 64, "width": SIZE[0], "height": SIZE[1]},
             "frames": [{"frame_index": 0, "timestamp_s": 0.0}, {"frame_index": 1, "timestamp_s": 1.0}],
-            "neurons": [{"id": n, "color": c} for n, c in (("a", "#ff0000"), ("b", "#00ff00"), ("c", "#0000ff"))],
+            "cells": [{"id": n, "color": c} for n, c in (("a", "#ff0000"), ("b", "#00ff00"), ("c", "#0000ff"))],
             "observations": observations,
             }
         )
@@ -146,3 +146,15 @@ def test_evaluate_reports_invalid_input_instead_of_raising(tmp_path):
     assert "source does not match" in evaluate(mismatched.model_dump_json(), marks)["reason"]
     good = evaluate(annotations(lambda index: "a").model_dump_json(), marks)
     assert good["valid"] is True and good["failures"] == []
+
+
+def test_files_saved_with_the_earlier_field_names_are_still_read():
+    from neuron_tracking.annotations import parse_annotations
+
+    current = annotations(lambda index: "a")
+    legacy = json.loads(current.model_dump_json())
+    legacy["neurons"] = legacy.pop("cells")
+    for row in legacy["observations"]:
+        row["neuron_id"] = row.pop("cell_id")
+    assert parse_annotations(json.dumps(legacy)) == current
+    assert parse_annotations(current.model_dump_json()) == current

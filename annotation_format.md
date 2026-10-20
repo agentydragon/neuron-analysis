@@ -43,10 +43,10 @@ The following is a synthetic format example, not an annotation of the sample:
     "height": 48
   },
   "frames": [{ "frame_index": 0, "timestamp_s": 0.0 }],
-  "neurons": [{ "id": "N001", "color": "#e6194b" }],
+  "cells": [{ "id": "N001", "color": "#e6194b" }],
   "observations": [
     {
-      "neuron_id": "N001",
+      "cell_id": "N001",
       "frame_index": 0,
       "visibility": "visible",
       "body": [
@@ -60,6 +60,12 @@ The following is a synthetic format example, not an annotation of the sample:
   ]
 }
 ```
+
+Both schemas are generated from the pydantic model in `neuron_tracking/annotations.py` with
+`uv run python -m neuron_tracking.schema`; a test fails if a committed file is out of date.
+
+The tools still read files saved with the earlier field names `neurons` and `neuron_id`
+(now `cells` and `cell_id`); new files use the new names.
 
 An observation's `visibility` is `visible`, `uncertain`, `not_visible`, or
 `out_of_frame`; `review` is `proposed`, `agent_reviewed`, or `human_reviewed`.

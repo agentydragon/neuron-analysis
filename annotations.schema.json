@@ -1,137 +1,211 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Neuron pixel annotations",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["schema_version", "revision", "source", "frames", "neurons", "observations"],
-  "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "revision": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "source": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "sha256", "width", "height"],
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        },
-        "width": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "height": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
-    },
-    "frames": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["frame_index", "timestamp_s"],
-        "properties": {
-          "frame_index": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "timestamp_s": {
-            "type": "number"
-          }
-        }
-      }
-    },
-    "neurons": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "color"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "color": {
-            "type": "string",
-            "pattern": "^#[0-9a-fA-F]{6}$"
-          }
-        }
-      }
-    },
-    "observations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["neuron_id", "frame_index", "visibility", "body", "branches", "uncertain", "review"],
-        "properties": {
-          "neuron_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "frame_index": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "visibility": {
-            "enum": ["visible", "uncertain", "not_visible", "out_of_frame"]
-          },
-          "body": {
-            "$ref": "#/$defs/mask"
-          },
-          "branches": {
-            "$ref": "#/$defs/mask"
-          },
-          "uncertain": {
-            "$ref": "#/$defs/mask"
-          },
-          "review": {
-            "enum": ["proposed", "agent_reviewed", "human_reviewed"]
-          }
-        }
-      }
-    }
-  },
+  "title": "Cell pixel annotations",
   "$defs": {
-    "mask": {
-      "type": "array",
-      "description": "Sorted nonoverlapping horizontal runs [y, x_start, x_end_exclusive] in source pixels. See annotation_format.md for semantic validation.",
-      "items": {
-        "$ref": "#/$defs/run"
-      }
+    "CellIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Persistent across all frames.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "color": {
+          "description": "Distinct per cell; used to render it.",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "color"
+      ],
+      "type": "object"
     },
-    "run": {
-      "type": "array",
-      "minItems": 3,
+    "Frame": {
+      "additionalProperties": false,
+      "properties": {
+        "frame_index": {
+          "description": "Index in decode order, starting at zero.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timestamp_s": {
+          "description": "Presentation time in seconds; strictly increasing across frames.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "frame_index",
+        "timestamp_s"
+      ],
+      "type": "object"
+    },
+    "Mask": {
+      "description": "Lossless horizontal runs [y, x_start, x_end] with an exclusive x_end: [10, 20, 23] is exactly pixels (20, 10), (21, 10) and (22, 10). Runs have integer bounds, are sorted by row and then starting column, must not overlap within a mask, and touching runs are coalesced. An empty mask is [].",
+      "items": {
+        "$ref": "#/$defs/Run"
+      },
+      "type": "array"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "description": "One cell in one frame.",
+      "properties": {
+        "cell_id": {
+          "description": "The id of the cell in `cells`.",
+          "type": "string"
+        },
+        "frame_index": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Describes the observation as a whole. not_visible and out_of_frame observations have empty masks; the uncertain mask describes specific ambiguous pixels even when other parts are visible."
+        },
+        "body": {
+          "$ref": "#/$defs/Mask",
+          "description": "Pixels of the cell body (soma)."
+        },
+        "branches": {
+          "$ref": "#/$defs/Mask",
+          "description": "Pixels of its visible processes, including their full width and tips."
+        },
+        "uncertain": {
+          "$ref": "#/$defs/Mask",
+          "description": "Candidate pixels whose ownership or body/branch classification cannot be resolved. They are excluded from body and branches and must be reported as unresolved."
+        },
+        "review": {
+          "$ref": "#/$defs/Review"
+        }
+      },
+      "required": [
+        "cell_id",
+        "frame_index",
+        "visibility",
+        "body",
+        "branches",
+        "uncertain",
+        "review"
+      ],
+      "type": "object"
+    },
+    "Review": {
+      "enum": [
+        "proposed",
+        "agent_reviewed",
+        "human_reviewed"
+      ],
+      "type": "string"
+    },
+    "Run": {
       "maxItems": 3,
+      "minItems": 3,
       "prefixItems": [
         {
-          "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "type": "integer"
         },
         {
-          "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "type": "integer"
         },
         {
-          "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "type": "integer"
         }
       ],
-      "items": false
+      "type": "array"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "description": "The video that was annotated.",
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha256": {
+          "description": "SHA-256 of the video file.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "width": {
+          "description": "Decoded frame width in pixels.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "height": {
+          "description": "Decoded frame height in pixels.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "Visibility": {
+      "enum": [
+        "visible",
+        "uncertain",
+        "not_visible",
+        "out_of_frame"
+      ],
+      "type": "string"
     }
-  }
+  },
+  "additionalProperties": false,
+  "description": "Pixel masks of cells in a microscopy clip, saved as annotations.json.",
+  "properties": {
+    "schema_version": {
+      "maximum": 1,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "revision": {
+      "description": "Starts at 1; increase it when you save a changed annotation.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "frames": {
+      "description": "Every included source frame, in order, with its presentation time.",
+      "items": {
+        "$ref": "#/$defs/Frame"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "cells": {
+      "description": "One entry per cell identity.",
+      "items": {
+        "$ref": "#/$defs/CellIdentity"
+      },
+      "type": "array"
+    },
+    "observations": {
+      "description": "One observation per cell per included frame, including frames where the cell is absent.",
+      "items": {
+        "$ref": "#/$defs/Observation"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "revision",
+    "source",
+    "frames",
+    "cells",
+    "observations"
+  ],
+  "type": "object"
 }
