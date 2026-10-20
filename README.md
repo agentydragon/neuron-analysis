@@ -162,6 +162,13 @@ It checks tracking consistency on the marked cells only, not mask boundaries or 
 the reference image, without separating body from branches. `tasks/identity/run.sh NAME` stages a clean
 workspace without evaluation data and launches Codex in it; see `tasks/identity/README.md`.
 
+## Inspect eval
+
+`evals/identity/` runs the identity task as an [Inspect](https://inspect.aisi.org.uk/) eval in a Docker
+sandbox and scores `output/annotations.json` against the painted marks. The Claude Code agent can use a
+subscription token instead of the metered API, including from inside a Claude Code on the web session;
+see `evals/identity/README.md`.
+
 ## Source
 
 Imported from [`agentydragon/ducktape`, `x/neuron_tracking`](https://github.com/agentydragon/ducktape/tree/5ef11a907269bf2b532736c4e09b77188892b3c4/x/neuron_tracking).

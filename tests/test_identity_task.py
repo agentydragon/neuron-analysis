@@ -51,3 +51,13 @@ def test_only_annotations_json_is_requested():
     assert all("output/annotations.json" in text and "review record" not in text and "annotated AVI" not in text for text in launch)
     prompt = (ROOT / "tasks" / "identity" / "annotate.md").read_text()
     assert "output/annotations.json" in prompt and "review.json" not in prompt and "annotated.avi" not in prompt
+
+
+def test_claude_code_web_launcher_and_compose_stay_consistent():
+    import re
+    import subprocess as sp
+
+    folder = ROOT / "evals" / "identity"
+    assert sp.run(["bash", "-n", str(folder / "run-claude-code-web.sh")]).returncode == 0
+    image = lambda name: re.search(r"^\s*image: (\S+)", (folder / name).read_text(), re.M).group(1)
+    assert image("compose.yaml") == image("compose.claude-code-web.yaml")
