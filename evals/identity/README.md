@@ -20,6 +20,12 @@ uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -
 - `stub_oracle`, `stub_empty`, `stub_invalid`: write a fixed file with no model, to test the pipeline.
   The oracle reproduces the marks and must score 1.0 on every metric.
 
+`identity_clips` is a smaller version: one lossless clip per marked group (its frames plus `-T margin=2`
+frames on each side, cut by `neuron_tracking/clips.py` and cached in `runs/clips/`), run as parallel samples
+that are each scored against only that group's marks, remapped to the clip's frame numbers. Choose groups
+with `-T groups=24-32,66-72`; the default time limit is 20 minutes. The clips keep the source's pixels
+exactly but not its timestamps (constant 2 fps), and the agent is told the clip is `clip.avi`.
+
 Scores are `valid`, `same_cell`, `different_cell`, `marks_covered` (all fractions) and `all_pass`;
 failing pairs are in the sample's score metadata.
 

@@ -2,6 +2,7 @@
 # Run the identity eval with the Claude Code agent from inside a Claude Code on the web session,
 # using that session's own subscription login. Extra arguments go to `inspect eval`, e.g.
 #   evals/identity/run-claude-code-web.sh -T model=haiku -T effort=xhigh
+# Set TASK to pick another task, e.g. TASK=evals/identity/task.py@identity_clips.
 # See evals/identity/README.md for what this does and what it exposes to the agent.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
@@ -19,5 +20,5 @@ fi
 CLAUDE_CODE_OAUTH_TOKEN="$(cat "$CLAUDE_SESSION_INGRESS_TOKEN_FILE")"
 export CLAUDE_CODE_OAUTH_TOKEN
 
-exec uv run --group evals inspect eval evals/identity/task.py --model mockllm/model \
+exec uv run --group evals inspect eval "${TASK:-evals/identity/task.py}" --model mockllm/model \
   -T agent=claude_cli -T compose=evals/identity/compose.claude-code-web.yaml "$@"
