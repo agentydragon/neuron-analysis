@@ -17,7 +17,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     assert result.returncode == 0, result.stderr
     workspace = Path(result.stdout.strip())
     assert workspace == tmp_path / "identity_trial" / "workspace"
-    for name in ("annotate.md", "format.md", "annotations.schema.json", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
+    for name in ("annotate.md", "format.md", "target.md", "annotations.schema.json", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
         assert (workspace / name).is_file()
     assert (workspace / "output").is_dir()
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
@@ -38,7 +38,7 @@ def test_refuses_existing_run(tmp_path):
     assert "already exists" in again.stderr
 
 
-@pytest.mark.parametrize("prompt", ["annotate.md", "format.md"])
+@pytest.mark.parametrize("prompt", ["annotate.md", "format.md", "target.md"])
 def test_prompt_files_do_not_mention_evaluation_locations(prompt):
     text = (ROOT / "tasks" / "identity" / prompt).read_text()
     assert "data/eval" not in text and "identity_marks" not in text

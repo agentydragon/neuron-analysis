@@ -7,7 +7,7 @@ annotations and a colored annotated video. Choose how to do the work yourself; t
 result must satisfy the same requirements regardless of the tools you use.
 
 Use the source clip, reference image and output directory named in the launch
-prompt. The reference image shows the region whose neurons you are to annotate.
+prompt. `target.md` and the reference image define the region whose neurons you are to annotate.
 Follow that region as the specimen moves and rotates; the outline guides target
 selection and is not an already aligned segmentation mask. Continue through the
 whole clip without waiting for intermediate approval.
@@ -32,7 +32,7 @@ display saved masks; run `uv run neuron-render --help` for options.
 1. Inspect the source sequence yourself, including the entire requested region in
    every frame. Use an overview to orient yourself and close, pixel-preserving
    views to tell neighboring cells apart. Establish which neurons belong to the
-   requested region from the reference image. You may begin with a clear frame or
+   requested region from `target.md` and the reference image. You may begin with a clear frame or
    a few neurons, but that does not reduce the scope of the task.
 2. Annotate every distinguishable neuron throughout the sequence. Follow each
    identity between neighboring frames and through changes in pose, focus and

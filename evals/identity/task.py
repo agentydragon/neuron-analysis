@@ -81,6 +81,7 @@ def workspace_files(variant: Variant) -> dict[str, str]:
     return {
         "/workspace/annotate.md": ROOT / "tasks/identity/annotate.md",
         "/workspace/format.md": ROOT / "tasks/identity/format.md",
+        "/workspace/target.md": ROOT / "tasks/identity/target.md",
         "/workspace/annotations.schema.json": SCHEMA,
         f"/workspace/{variant.video_name}": variant.video,
         "/workspace/photo_2026-10-19_14-30-28.jpg": ROOT / "data/photo_2026-10-19_14-30-28.jpg",

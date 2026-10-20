@@ -7,7 +7,8 @@ extent is one mask in `body`, with `branches` left empty. The format, schema,
 renderer and scorer are the same as for the full task.
 
 Files here are the annotation agent's inputs: `annotate.md` (prompt) and
-`format.md` (how to save masks). The target is given only by the reference image.
+`format.md` (how to save masks) and `target.md` (the sample's target region, adapted from
+`sample_task.md` without its body/branch separation), plus the reference image.
 
 ## Run
 

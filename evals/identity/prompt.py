@@ -3,7 +3,7 @@
 
 def prompt(video: str) -> str:
     return (
-        f"Read annotate.md and format.md. Process all frames from {video}. The red outline in "
+        f"Read annotate.md, format.md and target.md. Process all frames from {video}. The red outline in "
         "photo_2026-10-19_14-30-28.jpg marks the region whose neurons to annotate. "
         "Save the annotations to output/annotations.json."
     )

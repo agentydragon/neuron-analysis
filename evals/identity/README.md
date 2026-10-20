@@ -32,7 +32,7 @@ failing pairs are in the sample's score metadata.
 ## Sandbox
 
 A plain `python:3.12-slim` image pinned by digest (`compose.yaml`), with no Dockerfile. For the Claude
-agents Inspect uploads the prompt, format, schema, video, reference image and the renderer source
+agents Inspect uploads the prompt, format, target definition, schema, video, reference image and the renderer source
 (`neuron_tracking/annotations.py`, `render.py`) into `/workspace`, then runs a setup script as root that
 creates an `agent` user, installs the locked environment (`uv sync --locked --no-dev --group agent`, which
 adds numpy, scipy, scikit-image, opencv, matplotlib and imageio) and the pinned Claude Code CLI. Setup takes
