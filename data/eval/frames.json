@@ -1,0 +1,86 @@
+{
+  "source": "IMG_6128.AVI",
+  "source_sha256": "d3914ca0e68c0d63e1759421529d15f2177747fdc978ba59ec0dba9e6b21c0e3",
+  "frames": [
+    {
+      "frame_index": 12,
+      "timestamp_s": 5.9,
+      "file": "frame_012.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "6874ece40f2bdd37bc7a497121a6c552969b79f3cc311e93f2bc6690bcf906e0"
+    },
+    {
+      "frame_index": 24,
+      "timestamp_s": 11.9,
+      "file": "frame_024.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "192368ca63d3aebd55989e678322d2254037db7ac3fe9f57aa79cfcfd1db896e"
+    },
+    {
+      "frame_index": 32,
+      "timestamp_s": 15.9,
+      "file": "frame_032.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "c4345a1e2e66463f52bb05e208f1b1c2a5bc22bcb32289c807d57fab5ef5acc0"
+    },
+    {
+      "frame_index": 38,
+      "timestamp_s": 18.9,
+      "file": "frame_038.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "c0b9992248e83ac7700f2a60e012fd3022ff2f0e60ee6b9751c14377c6e2fd7b"
+    },
+    {
+      "frame_index": 48,
+      "timestamp_s": 23.9,
+      "file": "frame_048.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "ea517e1f242c602df1e8e4c17d48cfc2819fa685746b4e7b731350fd1d02da11"
+    },
+    {
+      "frame_index": 52,
+      "timestamp_s": 25.9,
+      "file": "frame_052.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "1bbe69bcb9b161fd2210596712cf2d641b97e1181ebfcb30f9ed95014d73afab"
+    },
+    {
+      "frame_index": 58,
+      "timestamp_s": 28.9,
+      "file": "frame_058.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "75f6a15c250add01f3312acc665140edd7ea3c4fa2011f20b5cf29592d3fda00"
+    },
+    {
+      "frame_index": 62,
+      "timestamp_s": 30.9,
+      "file": "frame_062.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "d853610911872bc1f7891c661f321605cc26bcd23fe8077b4d39accb9df5d25b"
+    },
+    {
+      "frame_index": 66,
+      "timestamp_s": 32.9,
+      "file": "frame_066.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "dfbc43c631dad68ef65d4e4ac89729e3b99c40c7be3572c67631fcea2e98855c"
+    },
+    {
+      "frame_index": 72,
+      "timestamp_s": 35.9,
+      "file": "frame_072.png",
+      "width": 1280,
+      "height": 944,
+      "sha256": "eba9e3663c7cc4fc555785229f49ddb8e7ff6746e17cf9f749473c74435c49fa"
+    }
+  ]
+}
