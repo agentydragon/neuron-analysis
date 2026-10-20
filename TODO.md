@@ -19,12 +19,6 @@
 - [ ] Pave a durable launch/resume procedure for long parallel Codex jobs and
       investigate their unexpected SIGTERM exits. Preserve each run's existing
       conversation, progress files, and native trace across restarts.
-- [ ] If the full identity eval turns out slow, expensive, or does not work easily, make
-      smaller, easier versions with shorter time ranges: cut the clip to only the frames
-      around each marked group in `data/eval/identity_marks.json` (for example 24-32 or
-      66-72, plus some margin) and score only that group's marks, with frame indices
-      remapped. Derive the shortened clips and marks from the labels by a script so the
-      scorer and the full task keep working unchanged.
 - [ ] Check with the principal investigator what the dark cells along the side/belly of the
       embryo are. The task owner was told they are neurons, but others on the project are
       skeptical, and an agent judged them to be pigment cells and annotated nothing. Until
