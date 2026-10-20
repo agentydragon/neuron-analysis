@@ -18,6 +18,7 @@ dependencies = [
 neuron-render = "neuron_tracking.render:main"
 neuron-check = "neuron_tracking.check:main"
 neuron-eval-frames = "neuron_tracking.eval_frames:main"
+neuron-identity = "neuron_tracking.identity:main"
 
 [dependency-groups]
 dev = [
