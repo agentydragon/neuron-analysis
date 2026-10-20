@@ -21,7 +21,6 @@ FULL_EXAMPLE = {
             "body": [[10, 20, 27]],
             "branches": [],
             "uncertain": [],
-            "review": "proposed",
         }
     ],
 }

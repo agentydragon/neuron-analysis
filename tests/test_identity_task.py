@@ -93,3 +93,10 @@ def test_inspect_uploads_do_not_say_neuron():
         if Path(source).suffix.lower() not in (".avi", ".jpg"):
             assert "neuron" not in Path(source).read_text().lower(), destination
         assert "neuron" not in destination.lower()
+
+
+def test_a_missing_upload_source_is_an_error_not_a_file_containing_its_path(tmp_path):
+    from evals.identity.files import workspace_files
+
+    with pytest.raises(FileNotFoundError, match="clip.avi"):
+        workspace_files(tmp_path / "does-not-exist.avi", "clip.avi")

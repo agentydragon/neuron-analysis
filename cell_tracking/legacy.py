@@ -1,27 +1,28 @@
 """Read annotation files in any format we have used, including earlier field names (host-side only).
 
 `python -m cell_tracking.legacy OLD.json NEW.json` rewrites a full-format file saved with the earlier field
-names in the current format.
+names or a `review` state in the current format.
 """
 
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import Discriminator, Field, Tag, TypeAdapter
+from pydantic import AliasChoices, Discriminator, Field, Tag, TypeAdapter
 
 from cell_tracking.annotations import Annotations, CellIdentity, Observation
 from cell_tracking.masks import CellMasks
 
 
 class LegacyObservation(Observation):
-    cell_id: Annotated[str, Field(validation_alias="neuron_id")]
+    cell_id: Annotated[str, Field(validation_alias=AliasChoices("neuron_id", "cell_id"))]
+    review: Annotated[Any, Field(exclude=True)] = None  # recorded per observation but never used
 
 
 class LegacyAnnotations(Annotations):
-    """The full format as saved before it said cells: `neurons` and `neuron_id`."""
+    """The full format as earlier files have it: `neurons` and `neuron_id` instead of cells, and a `review` state."""
 
-    cells: Annotated[list[CellIdentity], Field(validation_alias="neurons")]
+    cells: Annotated[list[CellIdentity], Field(validation_alias=AliasChoices("neurons", "cells"))]
     observations: list[LegacyObservation]
 
 
@@ -29,7 +30,8 @@ def _format(value: object) -> str:
     if isinstance(value, dict):
         if "masks" in value:
             return "masks"
-        if "neurons" in value:
+        rows = value.get("observations")
+        if "neurons" in value or (isinstance(rows, list) and any(isinstance(row, dict) and "review" in row for row in rows)):
             return "legacy"
     return "full"
 

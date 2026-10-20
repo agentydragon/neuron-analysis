@@ -13,7 +13,6 @@ from cell_tracking.annotations import (
     Frame,
     Observation,
     Record,
-    Review,
     RUN_ENCODING,
     Run,
     Source,
@@ -104,7 +103,6 @@ def to_annotations(masks: CellMasks, source: Source, frames: list[Frame]) -> Ann
             body=by_key.get((identity, frame.frame_index), []),
             branches=[],
             uncertain=[],
-            review=Review.PROPOSED,
         )
         for identity in ids
         for frame in frames

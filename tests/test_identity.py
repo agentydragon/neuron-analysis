@@ -54,7 +54,6 @@ def full_annotations(owner_of_red):
                     "body": runs,
                     "branches": [],
                     "uncertain": [],
-                    "review": "proposed",
                 }
             )
     return Annotations.model_validate_json(
@@ -249,3 +248,19 @@ def test_a_pixel_under_several_cells_is_split_evenly_between_them():
     owners, share, shares = match_mark(mark, twins, 0)
     assert owners == {"a", "b"} and share == 1.0
     assert shares == {"a": pytest.approx(0.5), "b": pytest.approx(0.5)}
+
+
+def test_files_that_still_carry_a_review_state_are_read_with_either_field_names():
+    from cell_tracking.legacy import parse_annotations
+
+    current = full_annotations(lambda index: "a")
+    document = json.loads(current.model_dump_json())
+    for row in document["observations"]:
+        row["review"] = "proposed"
+    assert parse_annotations(json.dumps(document)) == current  # current field names, review ignored
+    old = json.loads(json.dumps(document))
+    old["neurons"] = old.pop("cells")
+    for row in old["observations"]:
+        row["neuron_id"] = row.pop("cell_id")
+    assert parse_annotations(json.dumps(old)) == current  # earlier field names too
+    assert "review" not in current.model_dump_json()

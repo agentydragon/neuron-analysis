@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
+from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Source, Visibility
 from cell_tracking.check import DistinctCheck, Match, RegionCheck, SampleChecks, check_annotations, main
 
 
@@ -23,7 +23,6 @@ def make_annotations(count: int) -> Annotations:
                 body=[(y, x, x + 3)],
                 branches=[],
                 uncertain=[],
-                review=Review.PROPOSED,
             )
         )
     return Annotations(

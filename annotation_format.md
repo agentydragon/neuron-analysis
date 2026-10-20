@@ -55,8 +55,7 @@ The following is a synthetic format example, not an annotation of the sample:
         [11, 20, 23]
       ],
       "branches": [[10, 23, 27]],
-      "uncertain": [[10, 27, 28]],
-      "review": "proposed"
+      "uncertain": [[10, 27, 28]]
     }
   ]
 }
@@ -66,7 +65,7 @@ The schema is derived from the pydantic model in `cell_tracking/annotations.py` 
 committed.
 
 An observation's `visibility` is `visible`, `uncertain`, `not_visible`, or
-`out_of_frame`; `review` is `proposed`, `agent_reviewed`, or `human_reviewed`.
+`out_of_frame`.
 Visibility describes the observation as a whole; the uncertainty mask describes
 specific ambiguous pixels even when other parts are visible. `not_visible` and
 `out_of_frame` observations have empty masks. A body can be absent while branches
@@ -86,7 +85,7 @@ mask disjointness, unique cell/frame observations, complete frame coverage,
 and frame/ID references. A schema-valid file can still contain incorrect masks.
 
 Derive `tracks.csv` positions from body-mask centroids and include body/branch
-pixel areas, frame index, timestamp, ID, visibility, and review state. If the body mask is
+pixel areas, frame index, timestamp, ID, and visibility. If the body mask is
 empty, its centroid is null. JSON masks remain the source of truth for pixel
 annotations; the CSV is a summary. `review.json` identifies the exact saved
 revision whose overlays were opened, unresolved pixel/identity alternatives,

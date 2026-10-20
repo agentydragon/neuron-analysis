@@ -58,12 +58,6 @@ class Visibility(StrEnum):
     OUT_OF_FRAME = "out_of_frame"
 
 
-class Review(StrEnum):
-    PROPOSED = "proposed"
-    AGENT_REVIEWED = "agent_reviewed"
-    HUMAN_REVIEWED = "human_reviewed"
-
-
 class Record(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False, strict=True)
 
@@ -112,7 +106,6 @@ class Observation(Record):
             )
         ),
     ]
-    review: Review
 
     def iter_masks(self) -> Iterator[tuple[Part, Mask]]:
         yield Part.BODY, self.body

@@ -11,7 +11,7 @@ from PIL import Image
 from pydantic import ValidationError
 
 from cell_tracking.schema import schema_for
-from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
+from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Source, Visibility
 from cell_tracking.render import Layer, RenderReport, hash_file, render, render_frame
 
 
@@ -27,7 +27,6 @@ def make_annotations(source: Path, timestamps: list[float]) -> Annotations:
                     body=[(y, x, x + 3)],
                     branches=[(y + 1, x, x + 4)],
                     uncertain=[(y + 2, x, x + 8)],
-                    review=Review.PROPOSED,
                 )
             )
     return Annotations(
