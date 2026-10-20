@@ -27,7 +27,7 @@ answers or any files outside this workspace.
 
 You may create tools that help you annotate, inspect and correct the data, using
 the Python environment here (`uv sync --locked`). Use `uv run neuron-render` to
-display saved masks and export AVI; run `uv run neuron-render --help` for options.
+display saved masks; run `uv run neuron-render --help` for options.
 
 1. Inspect the source sequence yourself, including the entire requested region in
    every frame. Use an overview to orient yourself and close, pixel-preserving
@@ -68,18 +68,12 @@ display saved masks and export AVI; run `uv run neuron-render --help` for option
    regions, IDs and unresolved decisions; do not call an incomplete result complete.
 
 Validate the JSON structure and the image-dependent mask invariants in `format.md`.
-Export `annotations.json`, a copy of `annotations.schema.json`, `annotated.avi` and
-`review.json` from the same reviewed revision. Each neuron must keep its color and
-ID across frames. Preserve source frame order and dimensions, check the decoded
-frame count and playback timing, and record timing changes.
+Your only deliverable is `output/annotations.json`; it is the only file collected, so
+do not rely on any other output. Each neuron must keep a distinct color and its ID
+across frames. Preserve source frame order and dimensions. Any later annotation
+change invalidates your review of the affected views.
 
-`review.json` records the exact saved revision whose overlays you opened, the
-frames, IDs and regions you inspected, the image paths you actually opened, the
-corrections you made, and any unresolved identity or pixel alternatives and
-incomplete coverage. Any later annotation change invalidates review of the
-affected views.
-
-The final response must link the outputs, state annotation and review coverage,
-list remaining localized uncertainties and any incomplete work, distinguish your
-visual checks from human review, and report whether compaction occurred, or say
-unknown if undetermined.
+The final response states annotation and review coverage (frames, IDs and regions you
+inspected), the unresolved identity or pixel alternatives and where they are, any
+incomplete work, and whether compaction occurred (or unknown if undetermined). Keep
+your visual checks distinct from human review.

@@ -42,3 +42,12 @@ def test_refuses_existing_run(tmp_path):
 def test_prompt_files_do_not_mention_evaluation_locations(prompt):
     text = (ROOT / "tasks" / "identity" / prompt).read_text()
     assert "data/eval" not in text and "identity_marks" not in text
+
+
+def test_only_annotations_json_is_requested():
+    from evals.identity.task import PROMPT
+
+    launch = [PROMPT, SCRIPT.read_text()]
+    assert all("output/annotations.json" in text and "review record" not in text and "annotated AVI" not in text for text in launch)
+    prompt = (ROOT / "tasks" / "identity" / "annotate.md").read_text()
+    assert "output/annotations.json" in prompt and "review.json" not in prompt and "annotated.avi" not in prompt
