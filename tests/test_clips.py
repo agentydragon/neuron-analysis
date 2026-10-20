@@ -4,9 +4,9 @@ import av
 import pytest
 from PIL import Image
 
-from neuron_tracking.clips import clip_marks, clip_range, cut_clip
-from neuron_tracking.identity import Cell, FrameMark, Group, IdentityMarks
-from neuron_tracking.annotations import Source
+from cell_tracking.clips import clip_marks, clip_range, cut_clip
+from cell_tracking.identity import Cell, FrameMark, Group, IdentityMarks
+from cell_tracking.annotations import Source
 
 
 def write_source(path, count=10):

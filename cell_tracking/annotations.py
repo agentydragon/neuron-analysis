@@ -1,6 +1,5 @@
 """Pixel annotation models and image-dependent validation."""
 
-import json
 from collections.abc import Iterator
 from enum import StrEnum
 from itertools import pairwise
@@ -14,16 +13,26 @@ type Run = tuple[
     Annotated[StrictInt, Field(json_schema_extra={"minimum": 0})],
     Annotated[StrictInt, Field(json_schema_extra={"minimum": 1})],
 ]
-type Mask = Annotated[
-    list[Run],
-    Field(
-        description=(
-            "Lossless horizontal runs [y, x_start, x_end] with an exclusive x_end: [10, 20, 23] is exactly pixels "
-            "(20, 10), (21, 10) and (22, 10). Runs have integer bounds, are sorted by row and then starting column, "
-            "must not overlap within a mask, and touching runs are coalesced. An empty mask is []."
-        )
-    ),
-]
+RUN_ENCODING = (
+    "Lossless horizontal runs [y, x_start, x_end] with an exclusive x_end: [10, 20, 23] is exactly pixels "
+    "(20, 10), (21, 10) and (22, 10). Runs have integer bounds, are sorted by row and then starting column, "
+    "must not overlap within a mask, and touching runs are coalesced."
+)
+type Mask = Annotated[list[Run], Field(description=RUN_ENCODING + " An empty mask is [].")]
+
+
+def validate_runs(mask: Mask, width: int, height: int, label: str) -> None:
+    """Raise ValueError unless the runs are in bounds, sorted by row then column, disjoint and coalesced."""
+    previous: Run | None = None
+    for run in mask:
+        y, start, end = run
+        if not (0 <= y < height and 0 <= start < end <= width):
+            raise ValueError(f"Out-of-bounds pixel run in {label}: {run}")
+        if previous is not None:
+            py, _, pend = previous
+            if y < py or (y == py and start <= pend):
+                raise ValueError(f"Runs must be sorted, disjoint and coalesced in {label}")
+        previous = run
 
 
 def mask_center(mask: Mask) -> tuple[float, float] | None:
@@ -149,16 +158,7 @@ class Annotations(Record):
             pairs.add(pair)
             intervals: list[Run] = []
             for part, mask in observation.iter_masks():
-                previous: Run | None = None
-                for run in mask:
-                    y, start, end = run
-                    if not (0 <= y < self.source.height and 0 <= start < end <= self.source.width):
-                        raise ValueError(f"Out-of-bounds pixel run in {pair}, {part}: {run}")
-                    if previous is not None:
-                        py, _, pend = previous
-                        if y < py or (y == py and start <= pend):
-                            raise ValueError(f"Runs must be sorted, disjoint and coalesced in {pair}, {part}")
-                    previous = run
+                validate_runs(mask, self.source.width, self.source.height, f"{pair}, {part}")
                 intervals.extend(mask)
             intervals.sort()
             for left, right in pairwise(intervals):
@@ -169,16 +169,3 @@ class Annotations(Record):
         if len(pairs) != len(ids) * len(frames):
             raise ValueError("Need one observation per cell per included frame")
         return self
-
-
-def parse_annotations(raw: str | bytes) -> Annotations:
-    """Parse annotation JSON; files saved before the format said cells (neurons, neuron_id) are accepted."""
-    document = json.loads(raw)
-    if isinstance(document, dict) and "neurons" in document and "cells" not in document:
-        document = {("cells" if key == "neurons" else key): value for key, value in document.items()}
-        document["observations"] = [
-            {("cell_id" if key == "neuron_id" else key): value for key, value in row.items()} if isinstance(row, dict) else row
-            for row in document.get("observations", [])
-        ]
-        raw = json.dumps(document)
-    return Annotations.model_validate_json(raw)

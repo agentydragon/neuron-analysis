@@ -10,7 +10,8 @@ from typing import Annotated, Self
 
 from pydantic import Field, StrictInt, model_validator
 
-from neuron_tracking.annotations import Annotations, Frame, Mask, Record, Source, mask_center, parse_annotations
+from cell_tracking.annotations import Annotations, Frame, Mask, Record, Source, mask_center
+from cell_tracking.legacy import parse_annotations
 
 
 class Match(StrEnum):

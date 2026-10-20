@@ -5,8 +5,9 @@ neuron in microscopy video, separate its body and branches, preserve its identit
 across frames, and inspect and correct its rendered masks before hand-off.
 
 The annotation prompt is in `annotate.md`, with mask semantics in
-`annotation_format.md` and the machine-readable format in
-`annotations.schema.json`. Five independent `gpt-6-luna` / `xhigh` trials have
+`annotation_format.md` and the machine-readable format in a JSON Schema derived
+from the pydantic model (`uv run python -m cell_tracking.schema full`; nothing is
+committed). Five independent `gpt-6-luna` / `xhigh` trials have
 finished; their artifacts and native traces are under
 `~/drive/neuron-tracking/runs/`.
 All produced partial annotations; see [the trial review](debug/first_trials.md).
@@ -29,7 +30,7 @@ uv run pytest
 
 `uv` installs the Python version in `.python-version` and the locked dependencies.
 The Python package and tests are independent of Ducktape. The command-line tools are
-`uv run neuron-render` and `uv run neuron-check`.
+`uv run cell-render` and `uv run cell-check`.
 
 The original video and target reference are tracked with Git LFS under `data/`.
 Their hashes and source metadata are in `data/README.md`.
@@ -72,12 +73,12 @@ that same color. Labels show the ID with its color border and leader line.
 From the repository root, render a single frame or the full AVI:
 
 ```bash
-uv run neuron-render \
+uv run cell-render \
   --source "$PWD/data/IMG_6128.AVI" \
   --annotations "$HOME/drive/neuron-tracking/runs/luna_xhigh_03/annotations.json" \
   --frame 68 --output "$PWD/runs/renderer/frame_068.png"
 
-uv run neuron-render \
+uv run cell-render \
   --source "$PWD/data/IMG_6128.AVI" \
   --annotations "$HOME/drive/neuron-tracking/runs/luna_xhigh_03/annotations.json" \
   --output "$PWD/runs/renderer/annotated.avi"
@@ -109,7 +110,7 @@ outside its input workspace; evaluate its saved output afterward. The
 Run the checks against an annotation JSON from the repository root:
 
 ```bash
-uv run neuron-check \
+uv run cell-check \
   --annotations "$HOME/drive/neuron-tracking/runs/manual_frame_review/annotations.json" \
   --checks sample_checks.json
 ```
@@ -150,10 +151,23 @@ coarse checks: passing does not establish mask boundaries or correct tracking.
 None of the first five runs pass all checks; see
 [the baseline comparison](debug/sanity_check_baseline.md).
 
+## Schemas
+
+The JSON Schemas are derived from the pydantic models when needed and are not committed:
+`uv run python -m cell_tracking.schema full` (full annotations) or `cells` (the identity task's whole-cell
+masks), printed or written with `--output FILE`. A root-level `annotations.schema.json` is git-ignored, for
+the first-run command below to read: create it with `--output annotations.schema.json` before launching.
+
+## Older annotation files
+
+Files saved with the earlier field names (`neurons`, `neuron_id`, now `cells` and `cell_id`) are read
+directly by `cell-check` and `cell-identity`. The renderer needs the current format; convert an old file
+with `uv run python -m cell_tracking.legacy OLD.json NEW.json`.
+
 ## Identity eval
 
 Hand-painted identity marks in `data/eval/` (see its README) assert which marks across frames are the
-same cell. Run `uv run neuron-identity check --annotations ANNOTATIONS --marks data/eval/identity_marks.json`.
+same cell. Run `uv run cell-identity check --annotations ANNOTATIONS --marks data/eval/identity_marks.json`.
 It checks tracking consistency on the marked cells only, not mask boundaries or extra neurons.
 
 ## Identity-only task

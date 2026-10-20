@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "neuron-analysis"
+name = "cell-analysis"
 version = "0.1.0"
 description = "Pixel masks, rendering, and evaluation for microscopy cell tracking"
 readme = "README.md"
@@ -15,10 +15,10 @@ dependencies = [
 ]
 
 [project.scripts]
-neuron-render = "neuron_tracking.render:main"
-neuron-check = "neuron_tracking.check:main"
-neuron-eval-frames = "neuron_tracking.eval_frames:main"
-neuron-identity = "neuron_tracking.identity:main"
+cell-render = "cell_tracking.render:main"
+cell-check = "cell_tracking.check:main"
+cell-eval-frames = "cell_tracking.eval_frames:main"
+cell-identity = "cell_tracking.identity:main"
 
 [dependency-groups]
 agent = [
@@ -41,7 +41,7 @@ evals = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["neuron_tracking"]
+packages = ["cell_tracking"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

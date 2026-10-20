@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from neuron_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
-from neuron_tracking.check import DistinctCheck, Match, RegionCheck, SampleChecks, check_annotations, main
+from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
+from cell_tracking.check import DistinctCheck, Match, RegionCheck, SampleChecks, check_annotations, main
 
 
 def make_annotations(count: int) -> Annotations:

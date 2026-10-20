@@ -3,7 +3,7 @@
 You are the annotator for the supplied microscopy clip. Find every distinguishable
 cell in the requested region, mark its visible pixels in every frame, and keep
 one persistent identity per cell across the whole sequence. Deliver the
-annotations and a colored annotated video. Choose how to do the work yourself; the
+annotations. Choose how to do the work yourself; the
 result must satisfy the same requirements regardless of the tools you use.
 
 Use the source clip, reference image and output directory named in the launch
@@ -14,11 +14,11 @@ whole clip without waiting for intermediate approval.
 
 This task is about identity. Do not separate body from branches: for each cell,
 mark everything you can see of that one cell (its body and any processes attached
-to it) as a single mask. Follow `annotations.schema.json` for how to save it: its descriptions define the coordinates,
-the mask encoding and the meaning of each field, and it includes an example.
+to it) as a single mask. Follow `annotations.schema.json` for how to save it: it defines the coordinates, the
+mask encoding and the format of each entry, and it includes an example.
 
 Work in one conversation; context compaction and CLI continuation are allowed.
-Keep the ID/color table, annotation revision, unresolved decisions and review
+Keep the cell id table, the saved annotations, unresolved decisions and review
 progress on disk so you can continue reliably. Keep identity decisions in this
 conversation; do not delegate frames to other agents. Keep scratch scripts and
 generated artifacts in the output directory. Use only the supplied inputs and your
@@ -26,8 +26,8 @@ own work, without consulting other runs, reference annotations, evaluation
 answers or any files outside this workspace.
 
 You may create tools that help you annotate, inspect and correct the data, using
-the Python environment here (`uv sync --locked`). Use `uv run neuron-render` to
-display saved masks; run `uv run neuron-render --help` for options.
+the Python environment here (`uv sync --locked`). Use `uv run cell-render` to
+display saved masks; run `uv run cell-render --help` for options.
 
 1. Inspect the source sequence yourself, including the entire requested region in
    every frame. Use an overview to orient yourself and close, pixel-preserving
@@ -44,7 +44,7 @@ display saved masks; run `uv run neuron-render --help` for options.
    different view, must keep its ID.
 3. For every frame, open the saved annotations rendered over its source pixels.
    Compare raw and annotated views over the whole region, with close crops wherever
-   needed, readable IDs and stable distinct colors. Check both directions: every
+   needed, and readable IDs; the renderer colors each cell consistently. Check both directions: every
    recognizable cell should be marked, and every marked pixel and identity should
    be supported by the source. Look for missed cells, background pixels, and
    masks that cover or merge neighboring cells. Opening a view without assessing
@@ -59,21 +59,21 @@ display saved masks; run `uv run neuron-render --help` for options.
    separate identities even when parts of them cannot be assigned. Never use one
    cell ID as a container for several unresolved cells. Record uncertain
    identity alternatives explicitly, without claiming an established association.
-   Do not present guesses as observed pixels. Use `uncertain`, `not_visible` and
-   `out_of_frame` according to the evidence and `annotations.schema.json`.
+   Do not present guesses as observed pixels. A cell that is not visible in a frame, or
+   is out of frame, has no entry for that frame; say in your final response where you
+   are unsure.
 6. Before hand-off, account for every source frame and every cell in the region.
-   Having an observation row for every frame or a valid JSON file does not satisfy
-   these requirements. If a resource limit or a specific ambiguity prevents
+   A valid JSON file does not satisfy these requirements. If a resource limit or a specific ambiguity prevents
    completion, save the work as partial and identify the exact affected frames,
    regions, IDs and unresolved decisions; do not call an incomplete result complete.
 
 Validate the JSON against `annotations.schema.json`, and separately check the image-dependent
-invariants it describes (run bounds, non-overlapping masks, one observation per cell per frame,
-complete frame coverage).
+invariants it describes (run bounds, non-overlapping runs, frame indices inside the video, at most one
+entry per cell per frame).
 Your only deliverable is `output/annotations.json`; it is the only file collected, so
-do not rely on any other output. Each cell must keep a distinct color and its ID
-across frames. Preserve source frame order and dimensions. Any later annotation
-change invalidates your review of the affected views.
+do not rely on any other output. Each cell must keep its ID across frames. Frame indices
+are in the video's decode order, starting at zero. Any later annotation change invalidates
+your review of the affected views.
 
 The final response states annotation and review coverage (frames, IDs and regions you
 inspected), the unresolved identity or pixel alternatives and where they are, any

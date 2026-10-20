@@ -3,9 +3,11 @@ import json
 import pytest
 from PIL import Image, ImageDraw
 
-from neuron_tracking.annotations import Annotations
-from neuron_tracking.identity import derive, evaluate, fill_holes, summarize, to_pixels, verdicts
-from neuron_tracking.render import hash_file
+from cell_tracking.annotations import Annotations
+from cell_tracking.eval_frames import FramesManifest, FrameRecord
+from cell_tracking.identity import derive, evaluate, fill_holes, from_annotations, summarize, to_pixels, verdicts
+from cell_tracking.masks import CellMask, CellMasks
+from cell_tracking.render import hash_file
 
 RED, BLUE = (237, 28, 36), (0, 162, 232)
 SIZE = (40, 30)
@@ -19,12 +21,12 @@ def make_eval(tmp_path, paint):
     for index in (0, 1):
         path = frames / f"frame_{index:03d}.png"
         Image.new("RGB", SIZE, (120, 120, 120)).save(path)
-        records.append({"frame_index": index, "width": SIZE[0], "height": SIZE[1], "sha256": hash_file(path)})
+        records.append(FrameRecord(frame_index=index, timestamp_s=float(index), file=path.name, width=SIZE[0], height=SIZE[1], sha256=hash_file(path)))
         painted = Image.new("RGBA", SIZE, (120, 120, 120, 255))
         paint(index, ImageDraw.Draw(painted))
         (tmp_path / "marked" / "pair").mkdir(parents=True, exist_ok=True)
         painted.save(tmp_path / "marked" / "pair" / path.name)
-    (tmp_path / "frames.json").write_text(json.dumps({"source": "clip.avi", "source_sha256": "a" * 64, "frames": records}))
+    (tmp_path / "frames.json").write_text(FramesManifest(source="clip.avi", source_sha256="a" * 64, frames=records).model_dump_json())
     return frames, tmp_path / "marked"
 
 
@@ -33,8 +35,8 @@ def paint_two_cells(index, draw):
     draw.rectangle((20, 20, 23, 23), fill=BLUE)
 
 
-def annotations(owner_of_red):
-    """CellIdentity 'a' sits under the red marks and 'b' under blue, unless owner_of_red says otherwise."""
+def full_annotations(owner_of_red):
+    """Cell 'a' sits under the red marks and 'b' under blue, unless owner_of_red says otherwise."""
     boxes = {"a": (4, 4, 9, 8), "b": (20, 20, 24, 24), "c": (30, 2, 34, 6)}
     observations = []
     for index in (0, 1):
@@ -69,6 +71,22 @@ def annotations(owner_of_red):
     )
 
 
+def masks_for(owner_of_red):
+    """Whole-cell masks: 'a' sits under the red marks and 'b' under blue, unless owner_of_red says otherwise."""
+    boxes = {"a": (4, 4, 9, 8), "b": (20, 20, 24, 24), "c": (30, 2, 34, 6)}
+    entries = []
+    for index in (0, 1):
+        for cell, (left, top, right, bottom) in boxes.items():
+            runs = [(y, left, right) for y in range(top, bottom)]
+            if cell == "a" and owner_of_red(index) != "a":
+                runs = []
+            if cell == owner_of_red(index) != "a":
+                runs = [(y, 4, 9) for y in range(4, 8)]
+            if runs:
+                entries.append(CellMask(cell=cell, frame=index, mask=runs))
+    return CellMasks(masks=entries)
+
+
 def test_fill_holes_covers_outlined_cell():
     ring = {(x, y) for x in range(2, 7) for y in range(2, 7)} - {(x, y) for x in range(3, 6) for y in range(3, 6)}
     assert len(fill_holes(ring, set())) == 25
@@ -95,7 +113,7 @@ def test_derive_rejects_two_blobs_of_one_color(tmp_path):
 
 def test_scores_consistent_tracking(tmp_path):
     marks = derive(*make_eval(tmp_path, paint_two_cells))
-    report = summarize(verdicts(annotations(lambda index: "a"), marks))
+    report = summarize(verdicts(masks_for(lambda index: "a"), marks))
     assert report["failures"] == []
     assert report["same_cell"] == {"passed": 2, "total": 2}
     assert report["different_cell"] == {"passed": 4, "total": 4}
@@ -103,7 +121,7 @@ def test_scores_consistent_tracking(tmp_path):
 
 def test_flags_identity_switch(tmp_path):
     marks = derive(*make_eval(tmp_path, paint_two_cells))
-    report = summarize(verdicts(annotations(lambda index: "a" if index == 0 else "c"), marks))
+    report = summarize(verdicts(masks_for(lambda index: "a" if index == 0 else "c"), marks))
     assert report["same_cell"] == {"passed": 1, "total": 2}
     assert [failure["kind"] for failure in report["failures"]] == ["same_cell"]
 
@@ -115,7 +133,7 @@ def test_flags_merged_cells_and_missed_marks(tmp_path):
         draw.rectangle((30, 22, 33, 25), fill=(255, 242, 0))  # no cell here
 
     marks = derive(*make_eval(tmp_path, paint))
-    report = summarize(verdicts(annotations(lambda index: "a"), marks))
+    report = summarize(verdicts(masks_for(lambda index: "a"), marks))
     assert report["marks_covered"] == {"passed": 4, "total": 6}
     assert any(failure["kind"] == "different_cell" for failure in report["failures"])
 
@@ -130,31 +148,41 @@ def test_rejects_mark_enclosing_another(tmp_path):
         derive(frames, marked)
 
 
-def test_rejects_other_source(tmp_path):
-    marks = derive(*make_eval(tmp_path, paint_two_cells))
-    other = annotations(lambda index: "a").model_copy(deep=True)
-    other.source.sha256 = "b" * 64
-    with pytest.raises(ValueError, match="source does not match"):
-        verdicts(other, marks)
-
-
 def test_evaluate_reports_invalid_input_instead_of_raising(tmp_path):
     marks = derive(*make_eval(tmp_path, paint_two_cells))
     assert evaluate("{not json", marks)["valid"] is False
-    mismatched = annotations(lambda index: "a").model_copy(deep=True)
-    mismatched.source.sha256 = "b" * 64
-    assert "source does not match" in evaluate(mismatched.model_dump_json(), marks)["reason"]
-    good = evaluate(annotations(lambda index: "a").model_dump_json(), marks)
-    assert good["valid"] is True and good["failures"] == []
+    good = evaluate(masks_for(lambda index: "a").model_dump_json(), marks, frame_count=2)
+    assert good["valid"] is True and good["failures"] == [] and good["cells"] == 3 and good["entries"] == 6
+    outside = CellMasks(masks=[CellMask(cell="a", frame=0, mask=[(2, 30, 60)])])
+    assert "Out-of-bounds" in evaluate(outside.model_dump_json(), marks)["reason"]
+    late = CellMasks(masks=[CellMask(cell="a", frame=5, mask=[(2, 3, 6)])])
+    assert "past the end" in evaluate(late.model_dump_json(), marks, frame_count=2)["reason"]
+
+
+def test_full_format_files_are_scored_through_conversion(tmp_path):
+    marks = derive(*make_eval(tmp_path, paint_two_cells))
+    report = evaluate(full_annotations(lambda index: "a").model_dump_json(), marks, frame_count=2)
+    assert report["valid"] is True and report["failures"] == []
+
+
+def test_conversion_merges_every_layer_of_visible_observations():
+    document = json.loads(full_annotations(lambda index: "a").model_dump_json())
+    row = next(row for row in document["observations"] if row["cell_id"] == "b" and row["frame_index"] == 0)
+    row["branches"], row["uncertain"] = [[25, 20, 24]], [[26, 20, 22]]
+    masks = from_annotations(Annotations.model_validate_json(json.dumps(document)))
+    entry = next(entry for entry in masks.masks if entry.cell == "b" and entry.frame == 0)
+    assert len(to_pixels(entry.mask)) == 16 + 4 + 2
+    assert not any(entry.cell == "a" and entry.frame == 5 for entry in masks.masks)
 
 
 def test_files_saved_with_the_earlier_field_names_are_still_read():
-    from neuron_tracking.annotations import parse_annotations
+    from cell_tracking.legacy import parse_annotations
 
-    current = annotations(lambda index: "a")
+    current = full_annotations(lambda index: "a")
     legacy = json.loads(current.model_dump_json())
-    legacy["cells"] = legacy.pop("cells")
+    legacy["neurons"] = legacy.pop("cells")
     for row in legacy["observations"]:
-        row["cell_id"] = row.pop("cell_id")
+        row["neuron_id"] = row.pop("cell_id")
+    assert "cells" not in legacy and "neuron_id" in legacy["observations"][0]
     assert parse_annotations(json.dumps(legacy)) == current
     assert parse_annotations(current.model_dump_json()) == current

@@ -5,9 +5,9 @@ from pathlib import Path
 
 import av
 
-from neuron_tracking.annotations import Source
-from neuron_tracking.identity import FrameMark, Group, IdentityMarks
-from neuron_tracking.render import hash_file
+from cell_tracking.annotations import Source
+from cell_tracking.identity import FrameMark, Group, IdentityMarks
+from cell_tracking.render import hash_file
 
 
 def clip_range(group: Group, margin: int, frame_count: int) -> tuple[int, int]:

@@ -10,8 +10,9 @@ import pytest
 from PIL import Image
 from pydantic import ValidationError
 
-from neuron_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
-from neuron_tracking.render import Layer, RenderReport, hash_file, render, render_frame
+from cell_tracking.schema import schema_for
+from cell_tracking.annotations import Annotations, Frame, CellIdentity, Observation, Review, Source, Visibility
+from cell_tracking.render import Layer, RenderReport, hash_file, render, render_frame
 
 
 def make_annotations(source: Path, timestamps: list[float]) -> Annotations:
@@ -89,10 +90,9 @@ def test_pixels_layers_and_identity_colors(sample: tuple[Path, Path, Annotations
     assert body.getpixel((80, 60)) == raw.getpixel((80, 60))
 
 
-def test_serialized_annotations_match_published_schema(sample: tuple[Path, Path, Annotations]) -> None:
+def test_serialized_annotations_match_the_derived_schema(sample: tuple[Path, Path, Annotations]) -> None:
     _, _, annotations = sample
-    schema = json.loads((Path(__file__).resolve().parents[1] / "annotations.schema.json").read_text())
-    jsonschema.Draft202012Validator(schema).validate(annotations.model_dump(mode="json"))
+    jsonschema.Draft202012Validator(schema_for("full")).validate(annotations.model_dump(mode="json"))
 
 
 def test_png_matches_lossless_avi_and_timing_is_reported(

@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -8,7 +9,7 @@ SCRIPT = ROOT / "tasks" / "identity" / "run.sh"
 
 
 def stage(tmp_path, name="trial"):
-    env = {"PATH": "/usr/bin:/bin", "RUNS_DIR": str(tmp_path)}
+    env = {**os.environ, "RUNS_DIR": str(tmp_path)}
     return subprocess.run([SCRIPT, name, "--stage-only"], env=env, capture_output=True, text=True)
 
 
@@ -22,12 +23,14 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     assert (workspace / "output").is_dir()
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
     assert not [path for path in staged if path.startswith(("data/", "tests/", "debug/")) or "sample_checks" in path]
-    assert {path for path in staged if path.startswith("neuron_tracking/")} == {
-        "neuron_tracking/annotations.py",
-        "neuron_tracking/render.py",
+    assert {path for path in staged if path.startswith("cell_tracking/")} == {
+        "cell_tracking/annotations.py",
+        "cell_tracking/hashing.py",
+        "cell_tracking/masks.py",
+        "cell_tracking/render.py",
     }
     pyproject = (workspace / "pyproject.toml").read_text()
-    assert "neuron-render" in pyproject and "neuron-check" not in pyproject and "neuron-identity" not in pyproject
+    assert "cell-render" in pyproject and "cell-check" not in pyproject and "cell-identity" not in pyproject
     assert "identity_marks" not in "".join(path.read_text(errors="ignore") for path in workspace.glob("*.md"))
 
 
@@ -63,32 +66,30 @@ def test_claude_code_web_launcher_and_compose_stay_consistent():
     assert image("compose.yaml") == image("compose.claude-code-web.yaml")
 
 
-def test_agent_facing_prompt_does_not_call_the_cells_neurons():
-    import re
+def test_nothing_in_the_staged_workspace_says_neuron():
+    import tempfile
 
     from evals.identity.prompt import PROMPT
 
+    result = stage(Path(tempfile.mkdtemp()), "wording")
+    assert result.returncode == 0, result.stderr
+    workspace = Path(result.stdout.strip())
+    scanned = 0
+    for path in workspace.rglob("*"):
+        if path.is_file() and path.suffix.lower() not in (".avi", ".jpg") and ".venv" not in path.parts:
+            assert "neuron" not in path.read_text(errors="ignore").lower(), path.relative_to(workspace)
+            assert "neuron" not in path.name.lower()
+            scanned += 1
+    assert scanned >= 8
     launch_line = next(line for line in SCRIPT.read_text().splitlines() if "Read annotate.md" in line)
-    text = (ROOT / "tasks" / "identity" / "annotate.md").read_text() + PROMPT + launch_line
-    assert not re.search(r"neuron(?!-render)", text, re.I)
+    assert "neuron" not in (launch_line + PROMPT).lower()
 
 
-def strip_guidance(node):
-    if isinstance(node, dict):
-        return {key: strip_guidance(value) for key, value in node.items() if key not in ("description", "examples", "title")}
-    if isinstance(node, list):
-        return [strip_guidance(item) for item in node]
-    return node
+def test_inspect_uploads_do_not_say_neuron():
+    from evals.identity.files import ROOT as repo
+    from evals.identity.files import workspace_files
 
-
-def test_identity_schema_is_the_shared_schema_plus_guidance():
-    import json
-
-    import jsonschema
-
-    shared = json.loads((ROOT / "annotations.schema.json").read_text())
-    identity = json.loads((ROOT / "tasks" / "identity" / "annotations.schema.json").read_text())
-    assert strip_guidance(identity) == strip_guidance(shared)
-    validator = jsonschema.Draft202012Validator(identity)
-    for example in identity["examples"]:
-        validator.validate(example)
+    for destination, source in workspace_files(repo / "data" / "IMG_6128.AVI", "IMG_6128.AVI").items():
+        if Path(source).suffix.lower() not in (".avi", ".jpg"):
+            assert "neuron" not in Path(source).read_text().lower(), destination
+        assert "neuron" not in destination.lower()

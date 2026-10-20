@@ -2,9 +2,9 @@
 
 An [Inspect](https://inspect.aisi.org.uk/) task that gives an agent the clip and the target image in a
 Docker sandbox, asks for `output/annotations.json`, and scores it against the painted identity marks in
-`data/eval/` (see `data/eval/README.md` for what the score means). The scorer first validates the file
-against `tasks/identity/annotations.schema.json` (the shared schema with added descriptions) and the pydantic checks; an invalid or missing file scores 0 with the
-reason recorded. The marks and scoring code stay on the host; the sandbox never contains them.
+`data/eval/` (see `data/eval/README.md` for what the score means). The scorer validates the file with the
+`CellMasks` pydantic model (the same model the agent's schema is derived from) and the video's dimensions and
+frame count; an invalid or missing file scores 0 with the reason recorded. The marks and scoring code stay on the host; the sandbox never contains them.
 
 ```bash
 uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -T agent=stub_oracle
@@ -21,7 +21,7 @@ uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -
   The oracle reproduces the marks and must score 1.0 on every metric.
 
 `identity_clips` is a smaller version: one lossless clip per marked group (its frames plus `-T margin=2`
-frames on each side, cut by `neuron_tracking/clips.py` and cached in `runs/clips/`), run as parallel samples
+frames on each side, cut by `cell_tracking/clips.py` and cached in `runs/clips/`), run as parallel samples
 that are each scored against only that group's marks, remapped to the clip's frame numbers. Choose groups
 with `-T groups=24-32,66-72`; the default time limit is 20 minutes. The clips keep the source's pixels
 exactly but not its timestamps (constant 2 fps), and the agent is told the clip is `clip.avi`.
@@ -33,7 +33,7 @@ failing pairs are in the sample's score metadata.
 
 A plain `python:3.12-slim` image pinned by digest (`compose.yaml`), with no Dockerfile. For the Claude
 agents Inspect uploads the prompt, target definition, schema, video, reference image (as `target.jpg`) and the renderer source
-(`neuron_tracking/annotations.py`, `render.py`) into `/workspace`, then runs a setup script as root that
+(`cell_tracking/annotations.py`, `hashing.py`, `masks.py`, `render.py`) into `/workspace`, then runs a setup script as root that
 creates an `agent` user, installs the locked environment (`uv sync --locked --no-dev --group agent`, which
 adds numpy, scipy, scikit-image, opencv, matplotlib and imageio) and the pinned Claude Code CLI. Setup takes
 about 40 seconds and needs network access. Only the renderer is exposed; check, identity and eval code is

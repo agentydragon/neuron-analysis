@@ -1,24 +1,25 @@
 # Trial annotation format
 
-The saved `annotations.json` conforms to `annotations.schema.json` and contains
-full-resolution pixel masks for every included neuron/frame observation. All pixel coordinates refer to the decoded
+The saved `annotations.json` conforms to the JSON Schema derived from the pydantic model
+(`uv run python -m cell_tracking.schema full`) and contains
+full-resolution pixel masks for every included cell/frame observation. All pixel coordinates refer to the decoded
 source image: integer `(x, y)` indexes the pixel in column `x`, row `y`, with
 `(0, 0)` at the top left. Frame indices start at zero; timestamps retain the
 source presentation times.
 
-Each observation has three masks under the same persistent neuron ID:
+Each observation has three masks under the same persistent cell ID:
 
 - `body`: pixels of the cell body (soma).
 - `branches`: pixels of its visible processes, including their full width and
   tips. Individual branches do not need their own persistent identities.
-- `uncertain`: candidate pixels whose neuron ownership or body/branch
+- `uncertain`: candidate pixels whose cell ownership or body/branch
   classification cannot be resolved. These are excluded from both definite
   masks and must be reported as unresolved.
 
 Within an observation, the masks are pairwise disjoint. The union of `body` and
 `branches` is its definite segmented extent; a completed annotation covers every
-identifiable neuron pixel, with remaining ambiguity explicitly represented.
-Masks for different neurons are independent: preserve uncertain ownership at a
+identifiable cell pixel, with remaining ambiguity explicitly represented.
+Masks for different cells are independent: preserve uncertain ownership at a
 crossing instead of forcing every image pixel to have one confident owner.
 Record the alternatives in `review.json`. Do not infer hidden anatomy or require
 all branches to form a connected component in the visible image.
@@ -61,21 +62,18 @@ The following is a synthetic format example, not an annotation of the sample:
 }
 ```
 
-Both schemas are generated from the pydantic model in `neuron_tracking/annotations.py` with
-`uv run python -m neuron_tracking.schema`; a test fails if a committed file is out of date.
-
-The tools still read files saved with the earlier field names `neurons` and `neuron_id`
-(now `cells` and `cell_id`); new files use the new names.
+The schema is derived from the pydantic model in `cell_tracking/annotations.py` when needed; no schema file is
+committed.
 
 An observation's `visibility` is `visible`, `uncertain`, `not_visible`, or
 `out_of_frame`; `review` is `proposed`, `agent_reviewed`, or `human_reviewed`.
 Visibility describes the observation as a whole; the uncertainty mask describes
 specific ambiguous pixels even when other parts are visible. `not_visible` and
 `out_of_frame` observations have empty masks. A body can be absent while branches
-remain visible. Keep one observation per neuron per included frame, including
+remain visible. Keep one observation per cell per included frame, including
 explicit absence states.
 
-Render directly from these saved runs. Use the neuron's color for both parts,
+Render directly from these saved runs. Use the cell's color for both parts,
 distinguishing body and branches with fill/outline or opacity styling, and give
 uncertainty a separate visible style. Review raw, combined, body-only, and
 branch-only views; zoom without interpolating mask labels. Edit by tracing,
@@ -84,7 +82,7 @@ resulting pixel masks. The model need not enumerate every foreground pixel in
 its textual response.
 
 JSON Schema checks structure; separately validate the image-dependent run bounds,
-mask disjointness, unique neuron/frame observations, complete frame coverage,
+mask disjointness, unique cell/frame observations, complete frame coverage,
 and frame/ID references. A schema-valid file can still contain incorrect masks.
 
 Derive `tracks.csv` positions from body-mask centroids and include body/branch
@@ -92,5 +90,5 @@ pixel areas, frame index, timestamp, ID, visibility, and review state. If the bo
 empty, its centroid is null. JSON masks remain the source of truth for pixel
 annotations; the CSV is a summary. `review.json` identifies the exact saved
 revision whose overlays were opened, unresolved pixel/identity alternatives,
-and incomplete frame or neuron coverage. Changing masks invalidates affected
+and incomplete frame or cell coverage. Changing masks invalidates affected
 review records.

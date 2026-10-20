@@ -11,8 +11,11 @@ from typing import Annotated, Self
 from PIL import Image
 from pydantic import Field, StrictInt, ValidationError, model_validator
 
-from neuron_tracking.annotations import Annotations, Mask, Record, Source, parse_annotations
-from neuron_tracking.render import hash_file
+from cell_tracking.annotations import Annotations, Mask, Record, Source
+from cell_tracking.eval_frames import FramesManifest
+from cell_tracking.hashing import hash_file
+from cell_tracking.legacy import parse_any
+from cell_tracking.masks import CellMask, CellMasks
 
 type Pixels = set[tuple[int, int]]
 
@@ -142,9 +145,9 @@ def read_marks(original: Path, marked: Path) -> dict[str, Pixels]:
 
 
 def derive(frames_dir: Path, marked_dir: Path) -> IdentityMarks:
-    manifest = json.loads((frames_dir.parent / "frames.json").read_text())
-    recorded = {record["frame_index"]: record for record in manifest["frames"]}
-    width, height = next(iter(recorded.values()))["width"], next(iter(recorded.values()))["height"]
+    manifest = FramesManifest.model_validate_json((frames_dir.parent / "frames.json").read_text())
+    recorded = {record.frame_index: record for record in manifest.frames}
+    width, height = manifest.frames[0].width, manifest.frames[0].height
     groups = []
     for group_dir in sorted(path for path in marked_dir.iterdir() if path.is_dir()):
         cells: dict[str, list[FrameMark]] = {}
@@ -152,7 +155,7 @@ def derive(frames_dir: Path, marked_dir: Path) -> IdentityMarks:
         for marked in sorted(group_dir.glob("frame_*.png")):
             index = int(marked.stem.removeprefix("frame_"))
             original = frames_dir / f"frame_{index:03d}.png"
-            if index not in recorded or hash_file(original) != recorded[index]["sha256"]:
+            if index not in recorded or hash_file(original) != recorded[index].sha256:
                 raise ValueError(f"{original}: not the frame recorded in frames.json")
             indices.append(index)
             for color, pixels in read_marks(original, marked).items():
@@ -164,7 +167,7 @@ def derive(frames_dir: Path, marked_dir: Path) -> IdentityMarks:
                 cells=[Cell(color=color, marks=marks) for color, marks in sorted(cells.items())],
             )
         )
-    source = Source(path=manifest["source"], sha256=manifest["source_sha256"], width=width, height=height)
+    source = Source(path=manifest.source, sha256=manifest.source_sha256, width=width, height=height)
     return IdentityMarks(schema_version=1, source=source, groups=groups)
 
 
@@ -190,30 +193,41 @@ class Verdict:
         return both and not (len(self.first.owners) == 1 and self.first.owners == self.second.owners)
 
 
-def owners_of(mark: Pixels, annotations: Annotations, frame_index: int) -> frozenset[str]:
-    """Cells with the most mask pixels (any layer) under the mark; ties keep every tied ID."""
-    overlap: Counter[str] = Counter()
+def from_annotations(annotations: Annotations) -> CellMasks:
+    """Whole-cell masks from the full format: every layer of each visible observation, merged."""
+    entries = []
     for observation in annotations.observations:
-        if observation.frame_index != frame_index:
-            continue
+        pixels: Pixels = set()
         for _, mask in observation.iter_masks():
-            for y, start, end in mask:
-                overlap[observation.cell_id] += sum(1 for x in range(start, end) if (x, y) in mark)
+            pixels |= to_pixels(mask)
+        if pixels:
+            entries.append(CellMask(cell=observation.cell_id, frame=observation.frame_index, mask=to_runs(pixels)))
+    return CellMasks(masks=entries)
+
+
+def load_masks(raw: str | bytes) -> CellMasks:
+    """Read whole-cell masks, converting a file in the full annotation format (current or earlier names)."""
+    parsed = parse_any(raw)
+    return parsed if isinstance(parsed, CellMasks) else from_annotations(parsed)
+
+
+def owners_of(mark: Pixels, masks: CellMasks, frame_index: int) -> frozenset[str]:
+    """Cells with the most mask pixels under the mark; ties keep every tied ID."""
+    overlap: Counter[str] = Counter()
+    for entry in masks.masks:
+        if entry.frame != frame_index:
+            continue
+        for y, start, end in entry.mask:
+            overlap[entry.cell] += sum(1 for x in range(start, end) if (x, y) in mark)
     best = max(overlap.values(), default=0)
     return frozenset(cell for cell, count in overlap.items() if best > 0 and count == best)
 
 
-def verdicts(annotations: Annotations, marks: IdentityMarks) -> list[Verdict]:
-    source = annotations.source
-    if (source.sha256, source.width, source.height) != (marks.source.sha256, marks.source.width, marks.source.height):
-        raise ValueError(f"Annotation source does not match identity marks for {marks.source.path}")
-    available = {frame.frame_index for frame in annotations.frames}
+def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
     result = []
     for group in marks.groups:
-        if missing := sorted(set(group.frames) - available):
-            raise ValueError(f"Group {group.name}: annotations lack frames {missing}")
         owned = [
-            Owned(group.name, cell.color, mark.frame_index, owners_of(to_pixels(mark.pixels), annotations, mark.frame_index))
+            Owned(group.name, cell.color, mark.frame_index, owners_of(to_pixels(mark.pixels), masks, mark.frame_index))
             for cell in group.cells
             for mark in cell.marks
         ]
@@ -243,14 +257,15 @@ def summarize(items: list[Verdict]) -> dict:
     }
 
 
-def evaluate(annotations_json: str | bytes, marks: IdentityMarks) -> dict:
-    """Score annotation JSON text; malformed or mismatched input is reported, not raised."""
+def evaluate(annotations_json: str | bytes, marks: IdentityMarks, frame_count: int | None = None) -> dict:
+    """Score annotation JSON text; malformed or out-of-bounds input is reported, not raised."""
     try:
-        annotations = parse_annotations(annotations_json)
-        report = summarize(verdicts(annotations, marks))
+        masks = load_masks(annotations_json)
+        masks.check_bounds(marks.source.width, marks.source.height, frame_count)
+        report = summarize(verdicts(masks, marks))
     except (ValidationError, ValueError) as error:
         return {"valid": False, "reason": str(error)[:2000]}
-    return {"valid": True, **report}
+    return {"valid": True, "cells": len({entry.cell for entry in masks.masks}), "entries": len(masks.masks), **report}
 
 
 def main() -> None:
@@ -269,10 +284,10 @@ def main() -> None:
         arguments.output.write_text(marks.model_dump_json(indent=1) + "\n")
         print(json.dumps({group.name: [cell.color for cell in group.cells] for group in marks.groups}))
         return
-    items = verdicts(
-        parse_annotations(arguments.annotations.read_bytes()),
-        IdentityMarks.model_validate_json(arguments.marks.read_bytes()),
-    )
+    marks = IdentityMarks.model_validate_json(arguments.marks.read_bytes())
+    masks = load_masks(arguments.annotations.read_bytes())
+    masks.check_bounds(marks.source.width, marks.source.height)
+    items = verdicts(masks, marks)
     report = summarize(items)
     print(json.dumps(report, indent=2))
     if report["failures"] or report["marks_covered"]["passed"] != report["marks_covered"]["total"]:

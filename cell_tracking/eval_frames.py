@@ -3,11 +3,31 @@
 import argparse
 import json
 from pathlib import Path
+from typing import Annotated
 
 import av
 from PIL import Image, ImageDraw, ImageFont
+from pydantic import Field, StrictInt
 
-from neuron_tracking.render import hash_file
+from cell_tracking.annotations import Record
+from cell_tracking.hashing import hash_file
+
+
+class FrameRecord(Record):
+    frame_index: Annotated[StrictInt, Field(ge=0)]
+    timestamp_s: float
+    file: str
+    width: Annotated[StrictInt, Field(gt=0)]
+    height: Annotated[StrictInt, Field(gt=0)]
+    sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+
+
+class FramesManifest(Record):
+    """frames.json: the source video and each extracted frame, pinned by hash."""
+
+    source: str
+    source_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    frames: Annotated[list[FrameRecord], Field(min_length=1)]
 
 
 def decode(source: Path) -> list[tuple[Image.Image, float]]:
@@ -54,23 +74,23 @@ def main() -> None:
         path = frame_dir / f"frame_{index:03d}.png"
         image.save(path)
         records.append(
-            {
-                "frame_index": index,
-                "timestamp_s": timestamp,
-                "file": path.name,
-                "width": image.width,
-                "height": image.height,
-                "sha256": hash_file(path),
-            }
+            FrameRecord(
+                frame_index=index,
+                timestamp_s=timestamp,
+                file=path.name,
+                width=image.width,
+                height=image.height,
+                sha256=hash_file(path),
+            )
         )
     if records:
-        manifest = {"source": arguments.source.name, "source_sha256": hash_file(arguments.source), "frames": records}
-        (arguments.output / "frames.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        manifest = FramesManifest(source=arguments.source.name, source_sha256=hash_file(arguments.source), frames=records)
+        (arguments.output / "frames.json").write_text(manifest.model_dump_json(indent=2) + "\n")
     if arguments.sheets:
         sheet_dir = arguments.output / "sheets"
         sheet_dir.mkdir(exist_ok=True)
         contact_sheets(frames, sheet_dir, per_sheet=20, columns=4, width=480)
-    print(json.dumps({"frames": [record["frame_index"] for record in records], "source_frames": len(frames)}))
+    print(json.dumps({"frames": [record.frame_index for record in records], "source_frames": len(frames)}))
 
 
 if __name__ == "__main__":

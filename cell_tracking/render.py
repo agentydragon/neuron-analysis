@@ -13,7 +13,9 @@ import av
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 from pydantic import BaseModel
 
-from neuron_tracking.annotations import Annotations, Mask, Part, mask_center, parse_annotations
+from cell_tracking.annotations import Annotations, Mask, Part, mask_center
+from cell_tracking.hashing import hash_file
+from cell_tracking.masks import load_annotations
 
 
 class Layer(StrEnum):
@@ -36,11 +38,6 @@ class RenderReport(BaseModel):
     output_timestamps_s: list[float] | None
     source_duration_s: float | None
     output_duration_s: float | None
-
-
-def hash_file(path: Path) -> str:
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def render_frame(
@@ -134,7 +131,7 @@ def render(
     labels: bool,
 ) -> RenderReport:
     annotation_bytes = annotation_path.read_bytes()
-    annotations = parse_annotations(annotation_bytes)
+    annotations = load_annotations(annotation_bytes, source)
     if hash_file(source) != annotations.source.sha256:
         raise ValueError("Source SHA-256 differs from annotations")
     report_path = output.with_suffix(output.suffix + ".json")
@@ -157,7 +154,7 @@ def render(
     output_times: list[float] | None = None
     source_duration: float | None = None
     output_duration: float | None = None
-    with TemporaryDirectory(dir=output.parent, prefix=".neuron-render-") as temporary:
+    with TemporaryDirectory(dir=output.parent, prefix=".cell-render-") as temporary:
         rendered_path = Path(temporary) / output.name
         if frame_index is not None:
             with av.open(str(source)) as container:

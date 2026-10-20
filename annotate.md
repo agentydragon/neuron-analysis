@@ -1,7 +1,7 @@
-# Neuron annotation prompt
+# Cell annotation prompt
 
 You are the annotator for the supplied microscopy clip. You are responsible for
-finding every distinguishable neuron in the requested region, annotating its
+finding every distinguishable cell in the requested region, annotating its
 visible pixels in every frame, separating body and branches, and maintaining its
 identity across the sequence. Deliver the annotations and a colored annotated
 video. Choose how to do the work yourself; the result must satisfy the same
@@ -21,51 +21,52 @@ tracked project files. Keep scratch scripts and generated artifacts in the
 assigned output directory outside Git. Use only the supplied inputs and your own
 work, without consulting other runs, reference annotations, or evaluation answers.
 
-For every source frame, save full-resolution pixel masks for each neuron's body
+For every source frame, save full-resolution pixel masks for each cell's body
 (soma), branches (processes), and uncertain pixels under its persistent ID. Cover
 the full visible body and the width and tips of visible branches. Both definite
-parts belong to the same neuron. Read `annotation_format.md` for mask semantics
-and `annotations.schema.json` for the machine format. The saved raster pixels
+parts belong to the same cell. Read `annotation_format.md` for mask semantics
+and `annotations.schema.json` (write it with
+`uv run python -m cell_tracking.schema full --output annotations.schema.json`) for the machine format. The saved raster pixels
 are the annotations that must be inspected and exported.
 
 You may create tools that help you annotate, inspect, and correct the data, using
-the project's Python environment (`uv sync --locked`). Use `uv run neuron-render`
-to display saved masks and export AVI; run `uv run neuron-render --help` for options.
+the project's Python environment (`uv sync --locked`). Use `uv run cell-render`
+to display saved masks and export AVI; run `uv run cell-render --help` for options.
 
 1. Inspect the source sequence yourself, including the entire requested region
    in every frame. Use an overview to orient yourself and sufficiently close,
    pixel-preserving views to distinguish bodies, branch boundaries, and crossings.
    Establish what belongs to the requested population from the supplied inputs.
-   You may begin with a clear frame or a few neurons, but that starting point
+   You may begin with a clear frame or a few cells, but that starting point
    does not reduce the scope of the task.
 2. Annotate every distinguishable target throughout the sequence. Follow each
    identity between neighboring frames and through changes in pose, focus, and
-   appearance. Add neurons that become visible later. Check temporal comparisons
-   for identity switches, duplicate IDs for one neuron, and different neurons
+   appearance. Add cells that become visible later. Check temporal comparisons
+   for identity switches, duplicate IDs for one cell, and different cells
    sharing an ID. Revisit earlier frames when later evidence changes a decision.
    Verify disappearance against the source; difficulty matching an identity does
-   not establish that a neuron is absent.
+   not establish that a cell is absent.
 3. For every frame, open the saved annotations rendered over its source pixels.
    Compare raw and annotated views over the whole target region, using close
-   crops wherever necessary to judge each neuron's pixels. Inspect body and
+   crops wherever necessary to judge each cell's pixels. Inspect body and
    branch layers separately and together, with readable IDs, stable distinct
    colors, and the underlying source visible. Check both directions: every
    recognizable target pixel should be accounted for, and every assigned pixel
-   and identity should be supported by the source. Look for missed neurons and
+   and identity should be supported by the source. Look for missed cells and
    processes as well as incorrect boundaries, background pixels, and ownership.
    Opening a view without assessing those annotations does not complete review.
 4. Correct the saved masks and identities wherever review reveals an error or
    omission. Render and open the affected views again. Recheck identity changes
    across all affected frames. Continue this loop until you have addressed the
    discrepancies you can resolve from the source. Checking a few examples does
-   not validate the remaining neurons or frames. Contact sheets alone cannot
+   not validate the remaining cells or frames. Contact sheets alone cannot
    establish pixel boundaries. Record the frame, IDs, inspected region, revision,
    actual image paths opened, and resulting corrections or unresolved issues in
    `review.json`.
 5. Preserve uncertainty at the place it occurs. An unclear branch assignment
    or boundary does not erase a recognizable body. Distinguishable bodies must
    have separate identities even when some processes cannot be assigned. Never
-   use one neuron ID as a container for multiple unresolved neurons. Record
+   use one cell ID as a container for multiple unresolved cells. Record
    uncertain identity alternatives explicitly, without claiming an established
    association. Do not invent hidden anatomy or present guesses as observed
    pixels. Use `uncertain`, `not_visible`, and `out_of_frame` according to the
@@ -84,7 +85,7 @@ to display saved masks and export AVI; run `uv run neuron-render --help` for opt
 Validate the JSON structure and the image-dependent mask invariants in
 `annotation_format.md`. Export `annotations.json`, a copy of
 `annotations.schema.json`, body-derived `tracks.csv`, `annotated.avi`, and
-`review.json` from the same reviewed revision. Each neuron must retain its
+`review.json` from the same reviewed revision. Each cell must retain its
 color and ID across frames, with distinct body, branch, and uncertainty styling.
 Preserve source frame order and dimensions, check decoded frame count and
 playback timing, and record timing changes. Inspect decoded AVI samples to check

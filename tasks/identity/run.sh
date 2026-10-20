@@ -12,14 +12,15 @@ workspace="$run/workspace"
 [ ! -e "$run" ] || { echo "$run already exists; use a fresh NAME" >&2; exit 1; }
 
 mkdir -p "$workspace/output"
-cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/target.md" "$repo/tasks/identity/annotations.schema.json" "$workspace/"
+cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/target.md" "$workspace/"
+uv run --project "$repo" --no-sync python -m cell_tracking.schema cells --output "$workspace/annotations.schema.json"
 cp "$repo/data/IMG_6128.AVI" "$workspace/"
 cp "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/target.jpg"
 cp "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
-mkdir "$workspace/neuron_tracking"
+mkdir "$workspace/cell_tracking"
 # Only the annotation model and renderer are copied; evaluation, clip and checking code stays out.
-cp "$repo/neuron_tracking/annotations.py" "$repo/neuron_tracking/render.py" "$workspace/neuron_tracking/"
-sed -i '/^neuron-check\|^neuron-identity\|^neuron-eval-frames/d' "$workspace/pyproject.toml"
+cp "$repo/cell_tracking/annotations.py" "$repo/cell_tracking/hashing.py" "$repo/cell_tracking/masks.py" "$repo/cell_tracking/render.py" "$workspace/cell_tracking/"
+sed -i '/^cell-check\|^cell-identity\|^cell-eval-frames/d' "$workspace/pyproject.toml"
 printf '# Renderer workspace\n' > "$workspace/README.md"
 
 [ "${2:-}" != "--stage-only" ] || { echo "$workspace"; exit 0; }

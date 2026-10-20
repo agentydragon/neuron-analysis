@@ -28,16 +28,15 @@ from inspect_ai.scorer import Score, Target, mean, scorer
 from inspect_ai.solver import Generate, TaskState, solver
 from inspect_ai.util import sandbox
 from inspect_swe import claude_code
-from jsonschema import Draft202012Validator
 
+from evals.identity.files import workspace_files
 from evals.identity.prompt import prompt
 from evals.identity.stubs import OUTPUT, build
-from neuron_tracking.clips import clip_marks, clip_range, cut_clip
-from neuron_tracking.identity import IdentityMarks, evaluate
+from cell_tracking.clips import clip_marks, clip_range, cut_clip
+from cell_tracking.identity import IdentityMarks, evaluate
 
 ROOT = Path(__file__).resolve().parents[2]
 MARKS = ROOT / "data" / "eval" / "identity_marks.json"
-SCHEMA = ROOT / "tasks/identity/annotations.schema.json"
 VIDEO = ROOT / "data" / "IMG_6128.AVI"
 
 
@@ -52,10 +51,13 @@ class Variant:
     video: Path
     video_name: str
     marks: IdentityMarks
+    frame_count: int
 
 
 def full_variant() -> Variant:
-    return Variant("full", VIDEO, VIDEO.name, IdentityMarks.model_validate_json(MARKS.read_text()))
+    with av.open(str(VIDEO)) as container:
+        frame_count = container.streams.video[0].frames
+    return Variant("full", VIDEO, VIDEO.name, IdentityMarks.model_validate_json(MARKS.read_text()), frame_count)
 
 
 def clip_variants(groups: str | None, margin: int) -> list[Variant]:
@@ -73,30 +75,17 @@ def clip_variants(groups: str | None, margin: int) -> list[Variant]:
         clip = ROOT / "runs" / "clips" / f"{group.name}_m{margin}" / "clip.avi"
         if not clip.exists():
             cut_clip(VIDEO, first, last, clip)
-        variants.append(Variant(group.name, clip, clip.name, clip_marks(marks, group.name, first, clip)))
+        variants.append(Variant(group.name, clip, clip.name, clip_marks(marks, group.name, first, clip), last - first + 1))
     return variants
 
 
-def workspace_files(variant: Variant) -> dict[str, str]:
-    return {
-        "/workspace/annotate.md": ROOT / "tasks/identity/annotate.md",
-        "/workspace/target.md": ROOT / "tasks/identity/target.md",
-        "/workspace/annotations.schema.json": SCHEMA,
-        f"/workspace/{variant.video_name}": variant.video,
-        "/workspace/target.jpg": ROOT / "data/photo_2026-10-19_14-30-28.jpg",
-        "/workspace/pyproject.toml": ROOT / "pyproject.toml",
-        "/workspace/uv.lock": ROOT / "uv.lock",
-        "/workspace/.python-version": ROOT / ".python-version",
-        "/workspace/neuron_tracking/annotations.py": ROOT / "neuron_tracking/annotations.py",
-        "/workspace/neuron_tracking/render.py": ROOT / "neuron_tracking/render.py",
-    }
 # Runs as root in the sandbox before the agent starts. Only the renderer is exposed; evaluation and
 # checking code is never uploaded, and the agent user owns the workspace.
 SETUP = f"""
 set -euo pipefail
 cd /workspace
 useradd --create-home --shell /bin/bash agent
-sed -i '/^neuron-check\\|^neuron-identity\\|^neuron-eval-frames/d' pyproject.toml
+sed -i '/^cell-check\\|^cell-identity\\|^cell-eval-frames/d' pyproject.toml
 printf '# Renderer workspace\\n' > README.md
 pip install --quiet --no-cache-dir uv nodejs-wheel
 UV_PROJECT_ENVIRONMENT=/workspace/.venv uv sync --locked --no-dev --group agent
@@ -114,7 +103,7 @@ def stub(mode: str, variants: dict[str, Variant]):
         if mode == "invalid":
             text = '{"schema_version": 1}'
         else:
-            text = build(variant.marks, variant.video, mode=mode)
+            text = build(variant.marks, mode=mode)
         await sandbox().write_file(OUTPUT, text)
         return state
 
@@ -166,8 +155,6 @@ def claude_cli(model: str, effort: str | None, minutes: int):
 
 @scorer(metrics={"*": [mean()]})
 def identity_scorer(variants: dict[str, Variant]):
-    validator = Draft202012Validator(json.loads(SCHEMA.read_text()))
-
     async def score(state: TaskState, target: Target) -> Score:
         try:
             text = await sandbox().read_file(OUTPUT)
@@ -176,14 +163,8 @@ def identity_scorer(variants: dict[str, Variant]):
         saved = ROOT / "runs" / "outputs" / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}.annotations.json"
         saved.parent.mkdir(parents=True, exist_ok=True)
         saved.write_text(text)
-        try:
-            document = json.loads(text)
-            errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
-        except json.JSONDecodeError as error:
-            return failed(f"annotations.json is not JSON: {error}")
-        if errors:
-            return failed(f"schema: {errors[0].message[:300]} at {list(errors[0].path)[:6]}")
-        report = evaluate(text, variants[str(state.sample_id)].marks)
+        variant = variants[str(state.sample_id)]
+        report = evaluate(text, variant.marks, variant.frame_count)
         if not report["valid"]:
             return failed(report["reason"])
         same, different, covered = report["same_cell"], report["different_cell"], report["marks_covered"]
@@ -194,7 +175,6 @@ def identity_scorer(variants: dict[str, Variant]):
             "marks_covered": covered["passed"] / covered["total"],
         }
         value["all_pass"] = float(not report["failures"] and value["marks_covered"] == 1.0)
-        report["cells"] = len(document["cells"])
         report["saved_annotations"] = str(saved)
         return Score(value=value, explanation=json.dumps({key: report[key] for key in report if key != "valid"}), metadata=report)
 
@@ -221,7 +201,7 @@ def build_task(variants: list[Variant], agent: str, model: str, effort: str | No
         Sample(
             id=variant.id,
             input=prompt(variant.video_name),
-            files={path: str(source) for path, source in workspace_files(variant).items()} if needs_workspace else None,
+            files={path: str(source) for path, source in workspace_files(variant.video, variant.video_name).items()} if needs_workspace else None,
             setup=SETUP if needs_workspace else None,
         )
         for variant in variants

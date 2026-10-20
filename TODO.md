@@ -28,12 +28,10 @@
 - [ ] Check with the principal investigator what the dark cells along the side/belly of the
       embryo are. The task owner was told they are neurons, but others on the project are
       skeptical, and an agent judged them to be pigment cells and annotated nothing. Until
-      then the identity task's agent-facing text says "dark cells" and states that cell type is
-      not asserted. Once confirmed, clean up the terminology: the prompts and `target.md` in
-      `tasks/identity/`, `annotate.md`, `sample_task.md`, the READMEs and debug notes, the schema
-      `neuron-*` tool names, the package and repo
-      names, and the eval names. Also decide whether the marks in `data/eval/` still describe
-      the intended cells.
+      then everything an agent can read says "cells" or "dark cells" and states that cell type
+      is not asserted. Once confirmed, finish the terminology cleanup: the prose in the READMEs,
+      `PLAN.md` and the debug notes, the repo name, and the eval names. Also decide whether the
+      marks in `data/eval/` still describe the intended cells.
 
 Compaction is allowed. Keep each run in one Codex conversation and persist the
 identity table, annotation revision, unresolved decisions, and review progress so

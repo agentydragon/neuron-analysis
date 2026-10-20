@@ -2,8 +2,8 @@
 
 Evaluator-only inputs; keep them out of any annotation agent's workspace.
 `frames/` holds lossless PNGs of the marked source frames (frame index = decode order,
-as in `neuron-render`), `frames.json` pins the source SHA-256 and each PNG's hash.
-Regenerate with `uv run neuron-eval-frames --source data/IMG_6128.AVI --output data/eval --frame N ...`; add `--sheets` for labelled contact sheets of all frames (not committed).
+as in `cell-render`), `frames.json` pins the source SHA-256 and each PNG's hash.
+Regenerate with `uv run cell-eval-frames --source data/IMG_6128.AVI --output data/eval --frame N ...`; add `--sheets` for labelled contact sheets of all frames (not committed).
 
 ## Marking
 
@@ -31,9 +31,9 @@ colours may be reused for different cells in other groups, and one frame may app
 `marked/` frames are stored as separate copies per group. Groups so far: `66-72`, `58-62`, `52-58`, `24-32`.
 
 ```bash
-uv run neuron-identity derive --frames data/eval/frames --marked data/eval/marked \
+uv run cell-identity derive --frames data/eval/frames --marked data/eval/marked \
   --output data/eval/identity_marks.json
-uv run neuron-identity check --annotations runs/<run>/annotations.json \
+uv run cell-identity check --annotations runs/<run>/annotations.json \
   --marks data/eval/identity_marks.json
 ```
 
