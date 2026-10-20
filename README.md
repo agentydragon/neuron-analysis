@@ -156,6 +156,12 @@ Hand-painted identity marks in `data/eval/` (see its README) assert which marks 
 same cell. Run `uv run neuron-identity check --annotations ANNOTATIONS --marks data/eval/identity_marks.json`.
 It checks tracking consistency on the marked cells only, not mask boundaries or extra neurons.
 
+## Identity-only task
+
+`tasks/identity/` is a reduced task: annotate each neuron's identity across frames from the video and
+the reference image, without separating body from branches. `tasks/identity/run.sh NAME` stages a clean
+workspace without evaluation data and launches Codex in it; see `tasks/identity/README.md`.
+
 ## Source
 
 Imported from [`agentydragon/ducktape`, `x/neuron_tracking`](https://github.com/agentydragon/ducktape/tree/5ef11a907269bf2b532736c4e09b77188892b3c4/x/neuron_tracking).
