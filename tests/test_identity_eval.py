@@ -1,0 +1,16 @@
+from pathlib import Path
+
+from evals.identity.stubs import build
+from neuron_tracking.identity import IdentityMarks, evaluate
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_oracle_stub_scores_perfectly_and_empty_stub_fails():
+    marks = IdentityMarks.model_validate_json((ROOT / "data/eval/identity_marks.json").read_text())
+    video = ROOT / "data" / "IMG_6128.AVI"
+    oracle = evaluate(build(marks, video, mode="oracle"), marks)
+    assert oracle["valid"] and oracle["failures"] == []
+    assert oracle["marks_with_a_neuron"] == {"passed": 36, "total": 36}
+    empty = evaluate(build(marks, video, mode="empty"), marks)
+    assert empty["valid"] and empty["marks_with_a_neuron"]["passed"] == 0

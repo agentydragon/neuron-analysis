@@ -1,0 +1,14 @@
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!neuron_tracking/annotations.py
+!neuron_tracking/render.py
+!evals/identity/agent-requirements.txt
+!tasks/identity/annotate.md
+!tasks/identity/format.md
+!annotations.schema.json
+!data/IMG_6128.AVI
+!data/photo_2026-10-19_14-30-28.jpg
+!evals/identity/Dockerfile
+!evals/identity/extra-ca.crt

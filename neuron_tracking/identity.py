@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from PIL import Image
-from pydantic import Field, StrictInt, model_validator
+from pydantic import Field, StrictInt, ValidationError, model_validator
 
 from neuron_tracking.annotations import Annotations, Mask, Record, Source
 from neuron_tracking.render import hash_file
@@ -241,6 +241,16 @@ def summarize(items: list[Verdict]) -> dict:
             if not v.passed
         ],
     }
+
+
+def evaluate(annotations_json: str | bytes, marks: IdentityMarks) -> dict:
+    """Score annotation JSON text; malformed or mismatched input is reported, not raised."""
+    try:
+        annotations = Annotations.model_validate_json(annotations_json)
+        report = summarize(verdicts(annotations, marks))
+    except (ValidationError, ValueError) as error:
+        return {"valid": False, "reason": str(error)[:2000]}
+    return {"valid": True, **report}
 
 
 def main() -> None:
