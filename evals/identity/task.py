@@ -4,9 +4,9 @@ Two tasks: `identity` (the whole clip) and `identity_clips` (one short clip per 
 parallel samples, each scored against only its own group's marks).
 
 Run from the repository root, for example:
-    uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -T agent=stub_oracle
+    uv run --group evals inspect eval evals/identity/task.py@identity --model mockllm/model -T agent=stub_oracle
     uv run --group evals inspect eval evals/identity/task.py@identity_clips --model mockllm/model -T agent=stub_oracle
-    CLAUDE_CODE_OAUTH_TOKEN=... uv run --group evals inspect eval evals/identity/task.py \
+    CLAUDE_CODE_OAUTH_TOKEN=... uv run --group evals inspect eval evals/identity/task.py@identity \
         --model mockllm/model -T agent=claude_cli -T model=haiku -T effort=xhigh
 The default agent, claude_cli, runs the Claude Code CLI in the sandbox with a subscription token from
 `claude setup-token`; Inspect makes no model calls, so the Inspect --model is a placeholder. The agent

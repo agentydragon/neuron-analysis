@@ -7,8 +7,10 @@ Docker sandbox, asks for `output/annotations.json`, and scores it against the pa
 frame count; an invalid or missing file scores 0 with the reason recorded. The marks and scoring code stay on the host; the sandbox never contains them.
 
 ```bash
-uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -T agent=stub_oracle
+uv run --group evals inspect eval evals/identity/task.py@identity --model mockllm/model -T agent=stub_oracle
 ```
+
+Always name the task (`@identity` or `@identity_clips`): a bare `task.py` runs every task in the file.
 
 ## Agents (`-T agent=...`)
 
@@ -53,7 +55,7 @@ Needs Docker and a Claude subscription:
 ```bash
 claude setup-token                      # once; prints a long-lived token
 export CLAUDE_CODE_OAUTH_TOKEN=...      # do not commit it or paste it into logs
-uv run --group evals inspect eval evals/identity/task.py --model mockllm/model \
+uv run --group evals inspect eval evals/identity/task.py@identity --model mockllm/model \
   -T agent=claude_cli -T model=haiku -T effort=xhigh
 ```
 
