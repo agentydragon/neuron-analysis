@@ -17,7 +17,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     assert result.returncode == 0, result.stderr
     workspace = Path(result.stdout.strip())
     assert workspace == tmp_path / "identity_trial" / "workspace"
-    for name in ("annotate.md", "format.md", "target.md", "annotations.schema.json", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
+    for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
         assert (workspace / name).is_file()
     assert (workspace / "output").is_dir()
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
@@ -38,7 +38,7 @@ def test_refuses_existing_run(tmp_path):
     assert "already exists" in again.stderr
 
 
-@pytest.mark.parametrize("prompt", ["annotate.md", "format.md", "target.md"])
+@pytest.mark.parametrize("prompt", ["annotate.md", "target.md"])
 def test_prompt_files_do_not_mention_evaluation_locations(prompt):
     text = (ROOT / "tasks" / "identity" / prompt).read_text()
     assert "data/eval" not in text and "identity_marks" not in text
@@ -71,3 +71,24 @@ def test_agent_facing_prompt_does_not_call_the_cells_neurons():
     launch_line = next(line for line in SCRIPT.read_text().splitlines() if "Read annotate.md" in line)
     text = (ROOT / "tasks" / "identity" / "annotate.md").read_text() + PROMPT + launch_line
     assert not re.search(r"neuron(?!-render)", text, re.I)
+
+
+def strip_guidance(node):
+    if isinstance(node, dict):
+        return {key: strip_guidance(value) for key, value in node.items() if key not in ("description", "examples", "title")}
+    if isinstance(node, list):
+        return [strip_guidance(item) for item in node]
+    return node
+
+
+def test_identity_schema_is_the_shared_schema_plus_guidance():
+    import json
+
+    import jsonschema
+
+    shared = json.loads((ROOT / "annotations.schema.json").read_text())
+    identity = json.loads((ROOT / "tasks" / "identity" / "annotations.schema.json").read_text())
+    assert strip_guidance(identity) == strip_guidance(shared)
+    validator = jsonschema.Draft202012Validator(identity)
+    for example in identity["examples"]:
+        validator.validate(example)

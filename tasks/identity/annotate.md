@@ -14,8 +14,8 @@ whole clip without waiting for intermediate approval.
 
 This task is about identity. Do not separate body from branches: for each cell,
 mark everything you can see of that one cell (its body and any processes attached
-to it) as a single mask. Read `format.md` for how to save it and
-`annotations.schema.json` for the machine format.
+to it) as a single mask. Follow `annotations.schema.json` for how to save it: its descriptions define the coordinates,
+the mask encoding and the meaning of each field, and it includes an example.
 
 Work in one conversation; context compaction and CLI continuation are allowed.
 Keep the ID/color table, annotation revision, unresolved decisions and review
@@ -60,14 +60,16 @@ display saved masks; run `uv run neuron-render --help` for options.
    cell ID as a container for several unresolved cells. Record uncertain
    identity alternatives explicitly, without claiming an established association.
    Do not present guesses as observed pixels. Use `uncertain`, `not_visible` and
-   `out_of_frame` according to the evidence and `format.md`.
+   `out_of_frame` according to the evidence and `annotations.schema.json`.
 6. Before hand-off, account for every source frame and every cell in the region.
    Having an observation row for every frame or a valid JSON file does not satisfy
    these requirements. If a resource limit or a specific ambiguity prevents
    completion, save the work as partial and identify the exact affected frames,
    regions, IDs and unresolved decisions; do not call an incomplete result complete.
 
-Validate the JSON structure and the image-dependent mask invariants in `format.md`.
+Validate the JSON against `annotations.schema.json`, and separately check the image-dependent
+invariants it describes (run bounds, non-overlapping masks, one observation per cell per frame,
+complete frame coverage).
 Your only deliverable is `output/annotations.json`; it is the only file collected, so
 do not rely on any other output. Each cell must keep a distinct color and its ID
 across frames. Preserve source frame order and dimensions. Any later annotation

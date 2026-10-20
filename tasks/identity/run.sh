@@ -12,8 +12,9 @@ workspace="$run/workspace"
 [ ! -e "$run" ] || { echo "$run already exists; use a fresh NAME" >&2; exit 1; }
 
 mkdir -p "$workspace/output"
-cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/format.md" "$repo/tasks/identity/target.md" "$repo/annotations.schema.json" "$workspace/"
-cp "$repo/data/IMG_6128.AVI" "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/"
+cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/target.md" "$repo/tasks/identity/annotations.schema.json" "$workspace/"
+cp "$repo/data/IMG_6128.AVI" "$workspace/"
+cp "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/target.jpg"
 cp "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
 mkdir "$workspace/neuron_tracking"
 # Only the annotation model and renderer are copied; evaluation, clip and checking code stays out.
@@ -27,5 +28,5 @@ cd "$workspace"
 codex exec --model gpt-6-luna -c 'model_reasoning_effort="xhigh"' \
   --approve-for-me --json -C "$workspace" \
   --output-last-message "$run/handoff.md" \
-  "Read annotate.md, format.md and target.md. Process all frames from IMG_6128.AVI. The red outline in photo_2026-10-19_14-30-28.jpg marks the region whose dark cells to annotate. Save the annotations to output/annotations.json." \
+  "Read annotate.md and target.md. Process all frames from IMG_6128.AVI. The red outline in target.jpg marks the region whose dark cells to annotate. Save the annotations to output/annotations.json." \
   > "$run/codex_events.jsonl"

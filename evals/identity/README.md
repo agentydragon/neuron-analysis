@@ -3,7 +3,7 @@
 An [Inspect](https://inspect.aisi.org.uk/) task that gives an agent the clip and the target image in a
 Docker sandbox, asks for `output/annotations.json`, and scores it against the painted identity marks in
 `data/eval/` (see `data/eval/README.md` for what the score means). The scorer first validates the file
-against `annotations.schema.json` and the pydantic checks; an invalid or missing file scores 0 with the
+against `tasks/identity/annotations.schema.json` (the shared schema with added descriptions) and the pydantic checks; an invalid or missing file scores 0 with the
 reason recorded. The marks and scoring code stay on the host; the sandbox never contains them.
 
 ```bash
@@ -32,7 +32,7 @@ failing pairs are in the sample's score metadata.
 ## Sandbox
 
 A plain `python:3.12-slim` image pinned by digest (`compose.yaml`), with no Dockerfile. For the Claude
-agents Inspect uploads the prompt, format, target definition, schema, video, reference image and the renderer source
+agents Inspect uploads the prompt, target definition, schema, video, reference image (as `target.jpg`) and the renderer source
 (`neuron_tracking/annotations.py`, `render.py`) into `/workspace`, then runs a setup script as root that
 creates an `agent` user, installs the locked environment (`uv sync --locked --no-dev --group agent`, which
 adds numpy, scipy, scikit-image, opencv, matplotlib and imageio) and the pinned Claude Code CLI. Setup takes

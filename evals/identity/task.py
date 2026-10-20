@@ -37,7 +37,7 @@ from neuron_tracking.identity import IdentityMarks, evaluate
 
 ROOT = Path(__file__).resolve().parents[2]
 MARKS = ROOT / "data" / "eval" / "identity_marks.json"
-SCHEMA = ROOT / "annotations.schema.json"
+SCHEMA = ROOT / "tasks/identity/annotations.schema.json"
 VIDEO = ROOT / "data" / "IMG_6128.AVI"
 
 
@@ -80,11 +80,10 @@ def clip_variants(groups: str | None, margin: int) -> list[Variant]:
 def workspace_files(variant: Variant) -> dict[str, str]:
     return {
         "/workspace/annotate.md": ROOT / "tasks/identity/annotate.md",
-        "/workspace/format.md": ROOT / "tasks/identity/format.md",
         "/workspace/target.md": ROOT / "tasks/identity/target.md",
         "/workspace/annotations.schema.json": SCHEMA,
         f"/workspace/{variant.video_name}": variant.video,
-        "/workspace/photo_2026-10-19_14-30-28.jpg": ROOT / "data/photo_2026-10-19_14-30-28.jpg",
+        "/workspace/target.jpg": ROOT / "data/photo_2026-10-19_14-30-28.jpg",
         "/workspace/pyproject.toml": ROOT / "pyproject.toml",
         "/workspace/uv.lock": ROOT / "uv.lock",
         "/workspace/.python-version": ROOT / ".python-version",
