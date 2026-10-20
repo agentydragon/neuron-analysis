@@ -117,6 +117,7 @@ def test_scores_consistent_tracking(tmp_path):
     assert report["failures"] == []
     assert report["same_cell"] == {"passed": 2, "total": 2}
     assert report["different_cell"] == {"passed": 4, "total": 4}
+    assert report["mark_share"] == 1.0
 
 
 def test_flags_identity_switch(tmp_path):
@@ -186,3 +187,28 @@ def test_files_saved_with_the_earlier_field_names_are_still_read():
     assert "cells" not in legacy and "neuron_id" in legacy["observations"][0]
     assert parse_annotations(json.dumps(legacy)) == current
     assert parse_annotations(current.model_dump_json()) == current
+
+
+def test_mark_share_reflects_partial_coverage_splits_and_misses(tmp_path):
+    marks = derive(*make_eval(tmp_path, paint_two_cells))  # red 4x4 mark at x 4..7 (frame 0), blue 4x4 at x 20..23
+    full = masks_for(lambda index: "a")
+    assert summarize(verdicts(full, marks))["mark_share"] == 1.0
+    # 'a' covers only the left half (x 4..5) of the red mark in both frames; 'b' covers the whole blue mark
+    half = CellMasks(masks=[
+        *(CellMask(cell="a", frame=index, mask=[(y, 4, 6) for y in range(4, 8)]) for index in (0, 1)),
+        *(CellMask(cell="b", frame=index, mask=[(y, 20, 24) for y in range(20, 24)]) for index in (0, 1)),
+    ])
+    report = summarize(verdicts(half, marks))
+    assert report["marks_covered"] == {"passed": 4, "total": 4}
+    # red marks: frame 0 covers x 4..5 of 4..7 (0.5), frame 1 covers x 5 of 5..8 (0.25); blue marks: 1.0 each
+    assert report["mark_share"] == pytest.approx((0.5 + 0.25 + 1.0 + 1.0) / 4)
+    # a split: two cells share the red mark 8 pixels each, so the best cell covers half of it
+    split = CellMasks(masks=[
+        CellMask(cell="a", frame=0, mask=[(y, 4, 6) for y in range(4, 8)]),
+        CellMask(cell="c", frame=0, mask=[(y, 6, 8) for y in range(4, 8)]),
+        CellMask(cell="b", frame=0, mask=[(y, 20, 24) for y in range(20, 24)]),
+    ])
+    # only frame 0 has masks: red 0.5 (a tie, 8 of 16 pixels each), blue 1.0, and the two frame-1 marks are unmatched
+    assert summarize(verdicts(split, marks))["mark_share"] == pytest.approx((0.5 + 1.0 + 0 + 0) / 4)
+    nothing = CellMasks(masks=[CellMask(cell="z", frame=0, mask=[(25, 1, 3)])])
+    assert summarize(verdicts(nothing, marks))["mark_share"] == 0.0

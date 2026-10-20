@@ -177,6 +177,7 @@ class Owned:
     color: str
     frame_index: int
     owners: frozenset[str]
+    share: float  # fraction of the mark's pixels under the best-matching cell
 
 
 @dataclass(frozen=True)
@@ -211,8 +212,9 @@ def load_masks(raw: str | bytes) -> CellMasks:
     return parsed if isinstance(parsed, CellMasks) else from_annotations(parsed)
 
 
-def owners_of(mark: Pixels, masks: CellMasks, frame_index: int) -> frozenset[str]:
-    """Cells with the most mask pixels under the mark; ties keep every tied ID."""
+def match_mark(mark: Pixels, masks: CellMasks, frame_index: int) -> tuple[frozenset[str], float]:
+    """Cells with the most mask pixels under the mark (ties keep every tied ID), and the share of the mark's
+    pixels that the best cell covers; 0 when no cell touches the mark."""
     overlap: Counter[str] = Counter()
     for entry in masks.masks:
         if entry.frame != frame_index:
@@ -220,14 +222,15 @@ def owners_of(mark: Pixels, masks: CellMasks, frame_index: int) -> frozenset[str
         for y, start, end in entry.mask:
             overlap[entry.cell] += sum(1 for x in range(start, end) if (x, y) in mark)
     best = max(overlap.values(), default=0)
-    return frozenset(cell for cell, count in overlap.items() if best > 0 and count == best)
+    owners = frozenset(cell for cell, count in overlap.items() if best > 0 and count == best)
+    return owners, best / len(mark)
 
 
 def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
     result = []
     for group in marks.groups:
         owned = [
-            Owned(group.name, cell.color, mark.frame_index, owners_of(to_pixels(mark.pixels), masks, mark.frame_index))
+            Owned(group.name, cell.color, mark.frame_index, *match_mark(to_pixels(mark.pixels), masks, mark.frame_index))
             for cell in group.cells
             for mark in cell.marks
         ]
@@ -240,7 +243,7 @@ def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
 
 def summarize(items: list[Verdict]) -> dict:
     def describe(owned: Owned) -> dict:
-        return {"cell": owned.color, "frame": owned.frame_index, "predicted_ids": sorted(owned.owners)}
+        return {"cell": owned.color, "frame": owned.frame_index, "predicted_ids": sorted(owned.owners), "share": round(owned.share, 3)}
 
     marks = {(v.first.group, v.first.color, v.first.frame_index): v.first for v in items} | {
         (v.second.group, v.second.color, v.second.frame_index): v.second for v in items
@@ -248,6 +251,7 @@ def summarize(items: list[Verdict]) -> dict:
     totals = {kind: [v for v in items if v.kind == kind] for kind in ("same_cell", "different_cell")}
     return {
         "marks_covered": {"passed": sum(bool(m.owners) for m in marks.values()), "total": len(marks)},
+        "mark_share": sum(m.share for m in marks.values()) / len(marks) if marks else 0.0,
         **{kind: {"passed": sum(v.passed for v in vs), "total": len(vs)} for kind, vs in totals.items()},
         "failures": [
             {"group": v.first.group, "kind": v.kind, "first": describe(v.first), "second": describe(v.second)}

@@ -27,7 +27,9 @@ that are each scored against only that group's marks, remapped to the clip's fra
 with `-T groups=24-32,66-72`; the time limit is the same 2 hours as for the full video. The clips keep the source's pixels
 exactly but not its timestamps (constant 2 fps), and the agent is told the clip is `clip.avi`.
 
-Scores are `valid`, `same_cell`, `different_cell`, `marks_covered` (all fractions) and `all_pass`;
+Scores are `valid`, `same_cell`, `different_cell`, `marks_covered`, `mark_share` (all fractions) and `all_pass`.
+`mark_share` is the mean, over all marks, of the fraction of a mark's pixels under its best-matching predicted cell
+(0 for a mark no cell touches), so it also reflects a cell covering only part of a mark;
 failing pairs are in the sample's score metadata.
 
 ## Sandbox

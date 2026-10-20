@@ -173,6 +173,7 @@ def identity_scorer(variants: dict[str, Variant]):
             "same_cell": same["passed"] / same["total"],
             "different_cell": different["passed"] / different["total"],
             "marks_covered": covered["passed"] / covered["total"],
+            "mark_share": report["mark_share"],
         }
         value["all_pass"] = float(not report["failures"] and value["marks_covered"] == 1.0)
         report["saved_annotations"] = str(saved)
@@ -182,7 +183,7 @@ def identity_scorer(variants: dict[str, Variant]):
 
 
 def failed(reason: str) -> Score:
-    value = {"valid": 0.0, "same_cell": 0.0, "different_cell": 0.0, "marks_covered": 0.0, "all_pass": 0.0}
+    value = {"valid": 0.0, "same_cell": 0.0, "different_cell": 0.0, "marks_covered": 0.0, "mark_share": 0.0, "all_pass": 0.0}
     return Score(value=value, explanation=reason)
 
 
