@@ -4,7 +4,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 from neuron_tracking.annotations import Annotations
-from neuron_tracking.identity import derive, fill_holes, summarize, to_pixels, verdicts
+from neuron_tracking.identity import derive, evaluate, fill_holes, summarize, to_pixels, verdicts
 from neuron_tracking.render import hash_file
 
 RED, BLUE = (237, 28, 36), (0, 162, 232)
@@ -136,3 +136,13 @@ def test_rejects_other_source(tmp_path):
     other.source.sha256 = "b" * 64
     with pytest.raises(ValueError, match="source does not match"):
         verdicts(other, marks)
+
+
+def test_evaluate_reports_invalid_input_instead_of_raising(tmp_path):
+    marks = derive(*make_eval(tmp_path, paint_two_cells))
+    assert evaluate("{not json", marks)["valid"] is False
+    mismatched = annotations(lambda index: "a").model_copy(deep=True)
+    mismatched.source.sha256 = "b" * 64
+    assert "source does not match" in evaluate(mismatched.model_dump_json(), marks)["reason"]
+    good = evaluate(annotations(lambda index: "a").model_dump_json(), marks)
+    assert good["valid"] is True and good["failures"] == []

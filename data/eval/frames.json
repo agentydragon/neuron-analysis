@@ -3,14 +3,6 @@
   "source_sha256": "d3914ca0e68c0d63e1759421529d15f2177747fdc978ba59ec0dba9e6b21c0e3",
   "frames": [
     {
-      "frame_index": 12,
-      "timestamp_s": 5.9,
-      "file": "frame_012.png",
-      "width": 1280,
-      "height": 944,
-      "sha256": "6874ece40f2bdd37bc7a497121a6c552969b79f3cc311e93f2bc6690bcf906e0"
-    },
-    {
       "frame_index": 24,
       "timestamp_s": 11.9,
       "file": "frame_024.png",
@@ -25,22 +17,6 @@
       "width": 1280,
       "height": 944,
       "sha256": "c4345a1e2e66463f52bb05e208f1b1c2a5bc22bcb32289c807d57fab5ef5acc0"
-    },
-    {
-      "frame_index": 38,
-      "timestamp_s": 18.9,
-      "file": "frame_038.png",
-      "width": 1280,
-      "height": 944,
-      "sha256": "c0b9992248e83ac7700f2a60e012fd3022ff2f0e60ee6b9751c14377c6e2fd7b"
-    },
-    {
-      "frame_index": 48,
-      "timestamp_s": 23.9,
-      "file": "frame_048.png",
-      "width": 1280,
-      "height": 944,
-      "sha256": "ea517e1f242c602df1e8e4c17d48cfc2819fa685746b4e7b731350fd1d02da11"
     },
     {
       "frame_index": 52,

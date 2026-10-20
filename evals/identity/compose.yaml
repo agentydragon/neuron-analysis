@@ -1,0 +1,9 @@
+services:
+  default:
+    build:
+      context: ../..
+      dockerfile: evals/identity/Dockerfile
+    image: neuron-identity-sandbox
+    init: true
+    command: tail -f /dev/null
+    working_dir: /workspace
