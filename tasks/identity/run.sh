@@ -14,10 +14,10 @@ workspace="$run/workspace"
 mkdir -p "$workspace/output"
 cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/format.md" "$repo/annotations.schema.json" "$workspace/"
 cp "$repo/data/IMG_6128.AVI" "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/"
-cp -r "$repo/neuron_tracking" "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
-find "$workspace/neuron_tracking" -name __pycache__ -prune -exec rm -rf {} +
-# Keep only the annotation model and renderer; evaluation and checking code stays out.
-rm "$workspace/neuron_tracking/check.py" "$workspace/neuron_tracking/identity.py" "$workspace/neuron_tracking/eval_frames.py"
+cp "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
+mkdir "$workspace/neuron_tracking"
+# Only the annotation model and renderer are copied; evaluation, clip and checking code stays out.
+cp "$repo/neuron_tracking/annotations.py" "$repo/neuron_tracking/render.py" "$workspace/neuron_tracking/"
 sed -i '/^neuron-check\|^neuron-identity\|^neuron-eval-frames/d' "$workspace/pyproject.toml"
 printf '# Renderer workspace\n' > "$workspace/README.md"
 
