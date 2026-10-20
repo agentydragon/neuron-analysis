@@ -1,0 +1,15 @@
+{
+  "species": "Xenopus laevis",
+  "files": [
+    {
+      "file": "IMG_6128.AVI",
+      "bytes": 13265074,
+      "sha256": "d3914ca0e68c0d63e1759421529d15f2177747fdc978ba59ec0dba9e6b21c0e3"
+    },
+    {
+      "file": "photo_2026-10-19_14-30-28.jpg",
+      "bytes": 91642,
+      "sha256": "61d6be45767abdcd4e549212638bdfdcd5d83fca4285f8ccc99c4184b0a9e0a2"
+    }
+  ]
+}
