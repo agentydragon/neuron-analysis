@@ -21,6 +21,14 @@ neuron-eval-frames = "neuron_tracking.eval_frames:main"
 neuron-identity = "neuron_tracking.identity:main"
 
 [dependency-groups]
+agent = [
+    "imageio>=2.38.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "opencv-python-headless>=5.0.0.93",
+    "scikit-image>=0.26.0",
+    "scipy>=1.18.1",
+]
 dev = [
     "jsonschema>=4.25",
     "pytest>=9.1.1",
