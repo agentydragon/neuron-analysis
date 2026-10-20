@@ -17,6 +17,7 @@ dependencies = [
 [project.scripts]
 neuron-render = "neuron_tracking.render:main"
 neuron-check = "neuron_tracking.check:main"
+neuron-eval-frames = "neuron_tracking.eval_frames:main"
 
 [dependency-groups]
 dev = [
