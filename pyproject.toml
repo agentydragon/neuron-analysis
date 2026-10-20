@@ -25,6 +25,10 @@ dev = [
     "jsonschema>=4.25",
     "pytest>=9.1.1",
 ]
+evals = [
+    "inspect-ai>=0.3.282",
+    "inspect-swe>=0.2.72",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["neuron_tracking"]
