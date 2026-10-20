@@ -71,7 +71,7 @@ def test_pixels_layers_and_identity_colors(sample: tuple[Path, Path, Annotations
     raw = Image.new("RGB", (128, 96), (100, 100, 100))
     for index in (0, 1):
         combined = render_frame(
-            raw, annotations, index, layer=Layer.COMBINED, neuron_ids={"N001", "N002"}, labels=False
+            raw, annotations, index, layer=Layer.COMBINED, cell_ids={"N001", "N002"}, labels=False
         )
         red_x, blue_x = (20, 80) if index == 0 else (80, 20)
         red = combined.getpixel((red_x, 30))
@@ -83,7 +83,7 @@ def test_pixels_layers_and_identity_colors(sample: tuple[Path, Path, Annotations
         assert combined.getpixel((red_x + 3, 30)) == raw.getpixel((red_x + 3, 30))
         assert combined.getpixel((red_x + 3, 31)) != raw.getpixel((red_x + 3, 31))
         assert len({combined.getpixel((red_x + offset, 32)) for offset in range(8)}) == 2
-    body = render_frame(raw, annotations, 0, layer=Layer.BODY, neuron_ids={"N001"}, labels=False)
+    body = render_frame(raw, annotations, 0, layer=Layer.BODY, cell_ids={"N001"}, labels=False)
     assert body.getpixel((20, 30)) != raw.getpixel((20, 30))
     assert body.getpixel((20, 31)) == raw.getpixel((20, 31))
     assert body.getpixel((80, 60)) == raw.getpixel((80, 60))
@@ -100,16 +100,16 @@ def test_png_matches_lossless_avi_and_timing_is_reported(
 ) -> None:
     source, path, annotations = sample
     png = tmp_path / "frame.png"
-    still = render(source, path, png, frame_index=1, layer=Layer.COMBINED, neuron_ids=None, labels=True)
+    still = render(source, path, png, frame_index=1, layer=Layer.COMBINED, cell_ids=None, labels=True)
     avi = tmp_path / "annotated.avi"
-    report = render(source, path, avi, frame_index=None, layer=Layer.COMBINED, neuron_ids=None, labels=True)
+    report = render(source, path, avi, frame_index=None, layer=Layer.COMBINED, cell_ids=None, labels=True)
     with av.open(str(avi)) as container:
         images = [frame.to_image() for frame in container.decode(video=0)]
     assert len(images) == 3
     assert all(image.size == (128, 96) for image in images)
     with Image.open(png) as image:
         assert images[1].tobytes() == image.tobytes()
-    assert still.neuron_colors == report.neuron_colors == {"N001": "#ff0000", "N002": "#0000ff"}
+    assert still.cell_colors == report.cell_colors == {"N001": "#ff0000", "N002": "#0000ff"}
     assert report.frame_indices == [0, 1, 2]
     assert report.source_timestamps_s == [0, 0.4, 0.9]
     assert report.output_timestamps_s == pytest.approx([0, 7 / 15, 14 / 15])
@@ -156,11 +156,11 @@ def test_partial_annotation_can_render_anchor_frame(sample: tuple[Path, Path, An
     )
     path.write_text(partial.model_dump_json())
     render(
-        source, path, tmp_path / "anchor.png", frame_index=1, layer=Layer.BRANCHES, neuron_ids={"N002"}, labels=False
+        source, path, tmp_path / "anchor.png", frame_index=1, layer=Layer.BRANCHES, cell_ids={"N002"}, labels=False
     )
     with pytest.raises(ValueError, match="every source frame"):
         render(
-            source, path, tmp_path / "partial.avi", frame_index=None, layer=Layer.COMBINED, neuron_ids=None, labels=True
+            source, path, tmp_path / "partial.avi", frame_index=None, layer=Layer.COMBINED, cell_ids=None, labels=True
         )
 
 
@@ -181,6 +181,6 @@ def test_source_mismatch_and_input_overwrite_are_rejected(
     output = source if failure == "overwrite" else tmp_path / "bad.avi"
     error = {"hash": "SHA-256", "timestamp": "timestamp", "overwrite": "overwrite"}[failure]
     with pytest.raises(ValueError, match=error):
-        render(source, path, output, frame_index=None, layer=Layer.COMBINED, neuron_ids=None, labels=True)
+        render(source, path, output, frame_index=None, layer=Layer.COMBINED, cell_ids=None, labels=True)
     if failure != "overwrite":
         assert not output.exists()

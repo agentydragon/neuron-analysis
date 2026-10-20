@@ -19,14 +19,14 @@ def source_frames(video: Path) -> list[dict]:
 def build(marks: IdentityMarks, video: Path, *, mode: str) -> str:
     """Return annotation JSON: 'oracle' reproduces the marks, 'empty' is valid with nothing visible."""
     frames = source_frames(video)
-    cells = [(group.name, cell) for group in marks.groups for cell in group.cells] if mode == "oracle" else []
-    if not cells:
-        cells = [("none", None)]
-    neurons, observations = [], []
-    for number, (group, cell) in enumerate(cells):
-        red, green, blue = colorsys.hsv_to_rgb(number / len(cells), 0.9, 0.95)
+    marked = [(group.name, cell) for group in marks.groups for cell in group.cells] if mode == "oracle" else []
+    if not marked:
+        marked = [("none", None)]
+    cells, observations = [], []
+    for number, (group, cell) in enumerate(marked):
+        red, green, blue = colorsys.hsv_to_rgb(number / len(marked), 0.9, 0.95)
         identity = f"N{number:03d}"
-        neurons.append({"id": identity, "color": "#%02x%02x%02x" % (round(red * 255), round(green * 255), round(blue * 255))})
+        cells.append({"id": identity, "color": "#%02x%02x%02x" % (round(red * 255), round(green * 255), round(blue * 255))})
         runs = {mark.frame_index: mark.pixels for mark in cell.marks} if cell else {}
         for frame in frames:
             body = [list(run) for run in runs.get(frame["frame_index"], [])]
@@ -48,7 +48,7 @@ def build(marks: IdentityMarks, video: Path, *, mode: str) -> str:
             "revision": 1,
             "source": {"path": source.path, "sha256": source.sha256, "width": source.width, "height": source.height},
             "frames": frames,
-            "cells": neurons,
+            "cells": cells,
             "observations": observations,
         }
     )

@@ -191,7 +191,7 @@ class Verdict:
 
 
 def owners_of(mark: Pixels, annotations: Annotations, frame_index: int) -> frozenset[str]:
-    """Neurons with the most mask pixels (any layer) under the mark; ties keep every tied ID."""
+    """Cells with the most mask pixels (any layer) under the mark; ties keep every tied ID."""
     overlap: Counter[str] = Counter()
     for observation in annotations.observations:
         if observation.frame_index != frame_index:
@@ -200,7 +200,7 @@ def owners_of(mark: Pixels, annotations: Annotations, frame_index: int) -> froze
             for y, start, end in mask:
                 overlap[observation.cell_id] += sum(1 for x in range(start, end) if (x, y) in mark)
     best = max(overlap.values(), default=0)
-    return frozenset(neuron for neuron, count in overlap.items() if best > 0 and count == best)
+    return frozenset(cell for cell, count in overlap.items() if best > 0 and count == best)
 
 
 def verdicts(annotations: Annotations, marks: IdentityMarks) -> list[Verdict]:
@@ -226,14 +226,14 @@ def verdicts(annotations: Annotations, marks: IdentityMarks) -> list[Verdict]:
 
 def summarize(items: list[Verdict]) -> dict:
     def describe(owned: Owned) -> dict:
-        return {"cell": owned.color, "frame": owned.frame_index, "neurons": sorted(owned.owners)}
+        return {"cell": owned.color, "frame": owned.frame_index, "predicted_ids": sorted(owned.owners)}
 
     marks = {(v.first.group, v.first.color, v.first.frame_index): v.first for v in items} | {
         (v.second.group, v.second.color, v.second.frame_index): v.second for v in items
     }
     totals = {kind: [v for v in items if v.kind == kind] for kind in ("same_cell", "different_cell")}
     return {
-        "marks_with_a_neuron": {"passed": sum(bool(m.owners) for m in marks.values()), "total": len(marks)},
+        "marks_covered": {"passed": sum(bool(m.owners) for m in marks.values()), "total": len(marks)},
         **{kind: {"passed": sum(v.passed for v in vs), "total": len(vs)} for kind, vs in totals.items()},
         "failures": [
             {"group": v.first.group, "kind": v.kind, "first": describe(v.first), "second": describe(v.second)}
@@ -275,7 +275,7 @@ def main() -> None:
     )
     report = summarize(items)
     print(json.dumps(report, indent=2))
-    if report["failures"] or report["marks_with_a_neuron"]["passed"] != report["marks_with_a_neuron"]["total"]:
+    if report["failures"] or report["marks_covered"]["passed"] != report["marks_covered"]["total"]:
         raise SystemExit(1)
 
 

@@ -84,7 +84,7 @@ uv run neuron-render \
 ```
 
 Use `--layer body`, `--layer branches`, or `--layer uncertain` for separate
-views. Repeat `--neuron ID` to select identities; `--no-labels` leaves pixel
+views. Repeat `--cell ID` to select identities; `--no-labels` leaves pixel
 boundaries unobscured. Masks from different neurons draw in ID order; use
 individual-ID views to inspect overlapping ownership. Sparse annotations can
 render an anchor frame; full-video export requires every source frame.

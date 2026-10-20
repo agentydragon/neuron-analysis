@@ -1,4 +1,4 @@
-"""Render saved neuron identities and pixel masks over source video frames."""
+"""Render saved cell identities and pixel masks over source video frames."""
 
 import argparse
 import hashlib
@@ -30,7 +30,7 @@ class RenderReport(BaseModel):
     revision: int
     layer: Layer
     labels: bool
-    neuron_colors: dict[str, str]
+    cell_colors: dict[str, str]
     frame_indices: list[int]
     source_timestamps_s: list[float]
     output_timestamps_s: list[float] | None
@@ -44,16 +44,16 @@ def hash_file(path: Path) -> str:
 
 
 def render_frame(
-    image: Image.Image, annotations: Annotations, frame_index: int, *, layer: Layer, neuron_ids: set[str], labels: bool
+    image: Image.Image, annotations: Annotations, frame_index: int, *, layer: Layer, cell_ids: set[str], labels: bool
 ) -> Image.Image:
     if image.size != (annotations.source.width, annotations.source.height):
         raise ValueError("Decoded frame dimensions differ from annotation source")
-    colors: dict[str, tuple[int, ...]] = {neuron.id: ImageColor.getrgb(neuron.color) for neuron in annotations.cells}
+    colors: dict[str, tuple[int, ...]] = {cell.id: ImageColor.getrgb(cell.color) for cell in annotations.cells}
     overlay = Image.new("RGBA", image.size)
     draw = ImageDraw.Draw(overlay)
     anchors: list[tuple[str, tuple[float, float]]] = []
     observations = sorted(
-        (o for o in annotations.observations if o.frame_index == frame_index and o.cell_id in neuron_ids),
+        (o for o in annotations.observations if o.frame_index == frame_index and o.cell_id in cell_ids),
         key=lambda o: o.cell_id,
     )
     for observation in observations:
@@ -130,7 +130,7 @@ def render(
     *,
     frame_index: int | None,
     layer: Layer,
-    neuron_ids: set[str] | None,
+    cell_ids: set[str] | None,
     labels: bool,
 ) -> RenderReport:
     annotation_bytes = annotation_path.read_bytes()
@@ -140,10 +140,10 @@ def render(
     report_path = output.with_suffix(output.suffix + ".json")
     if any(path.resolve() in (source.resolve(), annotation_path.resolve()) for path in (output, report_path)):
         raise ValueError("Output would overwrite an input")
-    all_ids = {neuron.id for neuron in annotations.cells}
-    selected = all_ids if neuron_ids is None else neuron_ids
+    all_ids = {cell.id for cell in annotations.cells}
+    selected = all_ids if cell_ids is None else cell_ids
     if selected - all_ids:
-        raise ValueError(f"Unknown neuron IDs: {sorted(selected - all_ids)}")
+        raise ValueError(f"Unknown cell IDs: {sorted(selected - all_ids)}")
     frames = {frame.frame_index: frame.timestamp_s for frame in annotations.frames}
     if frame_index is not None and frame_index not in frames:
         raise ValueError(f"Frame {frame_index} is not included in the annotation JSON")
@@ -165,7 +165,7 @@ def render(
                     if index == frame_index:
                         check_frame(frame, frames[index], annotations)
                         render_frame(
-                            frame.to_image(), annotations, index, layer=layer, neuron_ids=selected, labels=labels
+                            frame.to_image(), annotations, index, layer=layer, cell_ids=selected, labels=labels
                         ).save(rendered_path)
                         break
                 else:
@@ -183,7 +183,7 @@ def render(
                         raise ValueError("Source has more frames than annotations")
                     check_frame(frame, frames[index], annotations)
                     image = render_frame(
-                        frame.to_image(), annotations, index, layer=layer, neuron_ids=selected, labels=labels
+                        frame.to_image(), annotations, index, layer=layer, cell_ids=selected, labels=labels
                     )
                     rendered = av.VideoFrame.from_image(image)
                     rendered.pts = index
@@ -200,7 +200,7 @@ def render(
             revision=annotations.revision,
             layer=layer,
             labels=labels,
-            neuron_colors={neuron.id: neuron.color for neuron in annotations.cells if neuron.id in selected},
+            cell_colors={cell.id: cell.color for cell in annotations.cells if cell.id in selected},
             frame_indices=indices,
             source_timestamps_s=[frames[index] for index in indices],
             output_timestamps_s=output_times,
@@ -252,7 +252,7 @@ def main() -> None:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--frame", type=int, help="Render one frame to PNG; omit to export the entire AVI")
     parser.add_argument("--layer", type=Layer, choices=list(Layer), default=Layer.COMBINED)
-    parser.add_argument("--neuron", action="append", help="Render only this ID; repeat to select several")
+    parser.add_argument("--cell", action="append", help="Render only this ID; repeat to select several")
     parser.add_argument("--no-labels", action="store_true")
     arguments = parser.parse_args()
     report = render(
@@ -261,7 +261,7 @@ def main() -> None:
         arguments.output,
         frame_index=arguments.frame,
         layer=arguments.layer,
-        neuron_ids=None if arguments.neuron is None else set(arguments.neuron),
+        cell_ids=None if arguments.cell is None else set(arguments.cell),
         labels=not arguments.no_labels,
     )
     print(

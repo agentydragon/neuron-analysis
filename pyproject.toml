@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "neuron-analysis"
 version = "0.1.0"
-description = "Pixel masks, rendering, and evaluation for microscopy neuron tracking"
+description = "Pixel masks, rendering, and evaluation for microscopy cell tracking"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

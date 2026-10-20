@@ -137,7 +137,7 @@ class Annotations(Record):
             raise ValueError("Source timestamps must strictly increase")
         ids = {cell.id for cell in self.cells}
         if len(ids) != len(self.cells):
-            raise ValueError("Duplicate neuron ID")
+            raise ValueError("Duplicate cell ID")
         if len({cell.color.lower() for cell in self.cells}) != len(ids):
             raise ValueError("Cell colors must be distinct")
         frames = set(indices)
@@ -167,7 +167,7 @@ class Annotations(Record):
             if observation.visibility in (Visibility.NOT_VISIBLE, Visibility.OUT_OF_FRAME) and intervals:
                 raise ValueError(f"Absent observation has pixels: {pair}")
         if len(pairs) != len(ids) * len(frames):
-            raise ValueError("Need one observation per neuron per included frame")
+            raise ValueError("Need one observation per cell per included frame")
         return self
 
 

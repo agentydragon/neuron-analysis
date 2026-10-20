@@ -8,7 +8,7 @@ SCRIPT = ROOT / "tasks" / "identity" / "run.sh"
 
 
 def stage(tmp_path, name="trial"):
-    env = {"PATH": "/usr/bin:/bin", "NEURON_RUNS": str(tmp_path)}
+    env = {"PATH": "/usr/bin:/bin", "RUNS_DIR": str(tmp_path)}
     return subprocess.run([SCRIPT, name, "--stage-only"], env=env, capture_output=True, text=True)
 
 

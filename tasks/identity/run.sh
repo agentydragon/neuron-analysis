@@ -7,7 +7,7 @@ set -euo pipefail
 
 name="${1:?usage: run.sh NAME [--stage-only]}"
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-run="${NEURON_RUNS:-$repo/runs}/identity_$name"
+run="${RUNS_DIR:-$repo/runs}/identity_$name"
 workspace="$run/workspace"
 [ ! -e "$run" ] || { echo "$run already exists; use a fresh NAME" >&2; exit 1; }
 

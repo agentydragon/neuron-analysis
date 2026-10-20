@@ -54,7 +54,7 @@ def make_checks(annotations: Annotations, match: Match = Match.BODY_CENTER) -> S
 def test_count_bounds_are_inclusive(count: int, passed: bool) -> None:
     annotations = make_annotations(count)
     results = check_annotations(annotations=annotations, checks=make_checks(annotations)).regions
-    assert len(results[0].neuron_ids) == count
+    assert len(results[0].cell_ids) == count
     assert results[0].passed == passed
 
 
@@ -62,7 +62,7 @@ def test_count_bounds_are_inclusive(count: int, passed: bool) -> None:
 def test_body_example_ignores_branch_or_uncertainty_pixels(match: Match) -> None:
     annotations = make_annotations(1)
     checks = make_checks(annotations, match=match)
-    assert check_annotations(annotations=annotations, checks=checks).regions[1].neuron_ids == ("cell-0",)
+    assert check_annotations(annotations=annotations, checks=checks).regions[1].cell_ids == ("cell-0",)
     data = annotations.model_dump(mode="json")
     observation = data["observations"][0]
     observation["body"] = [[1, 1, 4]]
@@ -125,7 +125,7 @@ def test_distinct_examples_reject_reused_ids_and_missing_bodies(case: str) -> No
             )
             for i in range(4)
         ],
-        distinct=[DistinctCheck(name="four_distinct_neurons", regions=[f"example-{i}" for i in range(4)])],
+        distinct=[DistinctCheck(name="four_distinct_cells", regions=[f"example-{i}" for i in range(4)])],
     )
     data = annotations.model_dump(mode="json")
     match case:
@@ -139,7 +139,7 @@ def test_distinct_examples_reject_reused_ids_and_missing_bodies(case: str) -> No
             data["observations"][-1]["body"] = []
     report = check_annotations(annotations=Annotations.model_validate_json(json.dumps(data)), checks=checks)
     assert report.distinct[0].passed == (case == "separate")
-    assert report.distinct[0].shared_neuron_ids == (("cell-0",) if case in ("merged", "shared_extra") else ())
+    assert report.distinct[0].shared_cell_ids == (("cell-0",) if case in ("merged", "shared_extra") else ())
     if case != "missing":
         assert all(region.passed for region in report.regions)
 
@@ -210,7 +210,7 @@ def test_cli_exit_status_and_machine_output(
         main()
     report = json.loads(capsys.readouterr().out)
     assert report["regions"]["region_count"]["passed"] == (12 <= count <= 20)
-    assert len(report["regions"]["region_count"]["neuron_ids"]) == count
+    assert len(report["regions"]["region_count"]["cell_ids"]) == count
     assert report["regions"]["example_body"]["passed"]
     if check_distinct:
-        assert report["distinct"]["separate"] == {"passed": False, "shared_neuron_ids": ["cell-0"]}
+        assert report["distinct"]["separate"] == {"passed": False, "shared_cell_ids": ["cell-0"]}

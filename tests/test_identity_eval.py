@@ -11,6 +11,6 @@ def test_oracle_stub_scores_perfectly_and_empty_stub_fails():
     video = ROOT / "data" / "IMG_6128.AVI"
     oracle = evaluate(build(marks, video, mode="oracle"), marks)
     assert oracle["valid"] and oracle["failures"] == []
-    assert oracle["marks_with_a_neuron"] == {"passed": 36, "total": 36}
+    assert oracle["marks_covered"] == {"passed": 36, "total": 36}
     empty = evaluate(build(marks, video, mode="empty"), marks)
-    assert empty["valid"] and empty["marks_with_a_neuron"]["passed"] == 0
+    assert empty["valid"] and empty["marks_covered"]["passed"] == 0

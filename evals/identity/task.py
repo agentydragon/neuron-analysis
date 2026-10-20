@@ -1,4 +1,4 @@
-"""Inspect task: annotate neuron identities in the sample clip, scored against painted identity marks.
+"""Inspect task: annotate cell identities in the sample clip, scored against painted identity marks.
 
 Two tasks: `identity` (the whole clip) and `identity_clips` (one short clip per marked group, run as
 parallel samples, each scored against only its own group's marks).
@@ -186,7 +186,7 @@ def identity_scorer(variants: dict[str, Variant]):
         report = evaluate(text, variants[str(state.sample_id)].marks)
         if not report["valid"]:
             return failed(report["reason"])
-        same, different, covered = report["same_cell"], report["different_cell"], report["marks_with_a_neuron"]
+        same, different, covered = report["same_cell"], report["different_cell"], report["marks_covered"]
         value = {
             "valid": 1.0,
             "same_cell": same["passed"] / same["total"],

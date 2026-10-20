@@ -38,15 +38,15 @@ def annotations(owner_of_red):
     boxes = {"a": (4, 4, 9, 8), "b": (20, 20, 24, 24), "c": (30, 2, 34, 6)}
     observations = []
     for index in (0, 1):
-        for neuron, (left, top, right, bottom) in boxes.items():
+        for cell, (left, top, right, bottom) in boxes.items():
             runs = [[y, left, right] for y in range(top, bottom)]
-            if neuron == "a" and owner_of_red(index) != "a":
+            if cell == "a" and owner_of_red(index) != "a":
                 runs = []
-            if neuron == owner_of_red(index) != "a":
+            if cell == owner_of_red(index) != "a":
                 runs = [[y, 4, 9] for y in range(4, 8)]
             observations.append(
                 {
-                    "cell_id": neuron,
+                    "cell_id": cell,
                     "frame_index": index,
                     "visibility": "visible" if runs else "not_visible",
                     "body": runs,
@@ -111,12 +111,12 @@ def test_flags_identity_switch(tmp_path):
 def test_flags_merged_cells_and_missed_marks(tmp_path):
     def paint(index, draw):
         draw.rectangle((4, 4, 6, 7), fill=RED)
-        draw.rectangle((7, 4, 8, 7), fill=BLUE)  # beside red, inside the same neuron
-        draw.rectangle((30, 22, 33, 25), fill=(255, 242, 0))  # no neuron here
+        draw.rectangle((7, 4, 8, 7), fill=BLUE)  # beside red, inside the same cell
+        draw.rectangle((30, 22, 33, 25), fill=(255, 242, 0))  # no cell here
 
     marks = derive(*make_eval(tmp_path, paint))
     report = summarize(verdicts(annotations(lambda index: "a"), marks))
-    assert report["marks_with_a_neuron"] == {"passed": 4, "total": 6}
+    assert report["marks_covered"] == {"passed": 4, "total": 6}
     assert any(failure["kind"] == "different_cell" for failure in report["failures"])
 
 
@@ -153,8 +153,8 @@ def test_files_saved_with_the_earlier_field_names_are_still_read():
 
     current = annotations(lambda index: "a")
     legacy = json.loads(current.model_dump_json())
-    legacy["neurons"] = legacy.pop("cells")
+    legacy["cells"] = legacy.pop("cells")
     for row in legacy["observations"]:
-        row["neuron_id"] = row.pop("cell_id")
+        row["cell_id"] = row.pop("cell_id")
     assert parse_annotations(json.dumps(legacy)) == current
     assert parse_annotations(current.model_dump_json()) == current

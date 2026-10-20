@@ -1,4 +1,4 @@
-"""Check neuron body locations, regional counts and distinct identities."""
+"""Check cell body locations, regional counts and distinct identities."""
 
 import argparse
 import json
@@ -58,12 +58,12 @@ class SampleChecks(Record):
 @dataclass(frozen=True)
 class Result:
     check: RegionCheck
-    neuron_ids: tuple[str, ...]
+    cell_ids: tuple[str, ...]
 
     @property
     def passed(self) -> bool:
-        return len(self.neuron_ids) >= self.check.min_count and (
-            self.check.max_count is None or len(self.neuron_ids) <= self.check.max_count
+        return len(self.cell_ids) >= self.check.min_count and (
+            self.check.max_count is None or len(self.cell_ids) <= self.check.max_count
         )
 
 
@@ -73,18 +73,18 @@ class DistinctResult:
     regions: tuple[Result, ...]
 
     @property
-    def shared_neuron_ids(self) -> tuple[str, ...]:
+    def shared_cell_ids(self) -> tuple[str, ...]:
         return tuple(
             sorted(
                 identity
-                for identity, count in Counter(i for r in self.regions for i in r.neuron_ids).items()
+                for identity, count in Counter(i for r in self.regions for i in r.cell_ids).items()
                 if count > 1
             )
         )
 
     @property
     def passed(self) -> bool:
-        return all(region.passed for region in self.regions) and not self.shared_neuron_ids
+        return all(region.passed for region in self.regions) and not self.shared_cell_ids
 
 
 @dataclass(frozen=True)
@@ -122,7 +122,7 @@ def check_annotations(annotations: Annotations, checks: SampleChecks) -> Report:
     results = [
         Result(
             check=check,
-            neuron_ids=tuple(sorted(o.cell_id for o in observations if matches_body(body=o.body, check=check))),
+            cell_ids=tuple(sorted(o.cell_id for o in observations if matches_body(body=o.body, check=check))),
         )
         for check in checks.regions
     ]
@@ -149,11 +149,11 @@ def main() -> None:
         json.dumps(
             {
                 "regions": {
-                    result.check.name: {"passed": result.passed, "neuron_ids": result.neuron_ids}
+                    result.check.name: {"passed": result.passed, "cell_ids": result.cell_ids}
                     for result in report.regions
                 },
                 "distinct": {
-                    result.check.name: {"passed": result.passed, "shared_neuron_ids": result.shared_neuron_ids}
+                    result.check.name: {"passed": result.passed, "shared_cell_ids": result.shared_cell_ids}
                     for result in report.distinct
                 },
             },
