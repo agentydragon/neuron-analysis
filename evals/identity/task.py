@@ -219,13 +219,13 @@ COMPOSE = str(Path(__file__).with_name("compose.yaml"))
 
 
 @task
-def identity(agent: str = "claude_cli", model: str = "haiku", effort: str | None = None, minutes: int = 30,
+def identity(agent: str = "claude_cli", model: str = "haiku", effort: str | None = None, minutes: int = 120,
              compose: str = COMPOSE) -> Task:
     return build_task([full_variant()], agent, model, effort, minutes, compose)
 
 
 @task
-def identity_clips(agent: str = "claude_cli", model: str = "haiku", effort: str | None = None, minutes: int = 20,
+def identity_clips(agent: str = "claude_cli", model: str = "haiku", effort: str | None = None, minutes: int = 120,
                    groups: str | None = None, margin: int = 2, compose: str = COMPOSE) -> Task:
     """Short clips around each marked group (all by default, or e.g. groups=24-32,66-72)."""
     return build_task(clip_variants(groups, margin), agent, model, effort, minutes, compose)

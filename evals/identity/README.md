@@ -15,7 +15,8 @@ uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -
 - `claude_cli` (default): runs the Claude Code CLI in the sandbox with a **subscription** token
   (`CLAUDE_CODE_OAUTH_TOKEN`), so nothing is billed to the metered API. Inspect makes no model calls, so
   pass `--model mockllm/model`. Options: `-T model=haiku|sonnet|...`, `-T effort=low|medium|high|xhigh|max`,
-  `-T minutes=30` (wall-clock limit). The raw `stream-json` transcript goes to `runs/transcripts/`.
+  `-T minutes=120` (the agent's wall-clock limit, 2 hours by default for both tasks; the sample limit adds
+  5 minutes for setup and scoring). The raw `stream-json` transcript goes to `runs/transcripts/`.
 - `claude`: Inspect's own Claude Code agent; model calls go through Inspect and need an Anthropic API key.
 - `stub_oracle`, `stub_empty`, `stub_invalid`: write a fixed file with no model, to test the pipeline.
   The oracle reproduces the marks and must score 1.0 on every metric.
@@ -23,7 +24,7 @@ uv run --group evals inspect eval evals/identity/task.py --model mockllm/model -
 `identity_clips` is a smaller version: one lossless clip per marked group (its frames plus `-T margin=2`
 frames on each side, cut by `cell_tracking/clips.py` and cached in `runs/clips/`), run as parallel samples
 that are each scored against only that group's marks, remapped to the clip's frame numbers. Choose groups
-with `-T groups=24-32,66-72`; the default time limit is 20 minutes. The clips keep the source's pixels
+with `-T groups=24-32,66-72`; the time limit is the same 2 hours as for the full video. The clips keep the source's pixels
 exactly but not its timestamps (constant 2 fps), and the agent is told the clip is `clip.avi`.
 
 Scores are `valid`, `same_cell`, `different_cell`, `marks_covered` (all fractions) and `all_pass`;
