@@ -77,6 +77,24 @@ MP4 to check frame count and dimensions. Video dimensions must be even. For loss
 PNG exports or `cell-views`; internal eval clips remain lossless FFV1 AVI with unchanged frame numbering.
 Rendering is not evidence of correct cells or tracking; open the outputs.
 
+## Plotting cell sizes
+
+From the repository root, plot mask area against the original video's timestamps:
+
+```bash
+uv run --locked --script scripts/plot-cell-areas.py \
+  --source data/timelapse1.avi --annotations runs/example/annotations.json \
+  --output-prefix runs/scratch/cell-areas --title "Cell mask area over time"
+```
+
+The committed script and its adjacent lockfile pin the plotting environment separately
+from the agent environment. Each fresh output prefix produces PNG and SVG charts,
+a self-contained interactive HTML chart, a CSV of measurements, and a provenance
+JSON with input, script, lockfile and output hashes. Colors are the same as the
+renderer's cell-ID colors. Size is the count of annotated mask pixels; missing
+entries produce gaps rather than zeros. Use the source video rather than the
+rendered MP4 so repeated playback frames do not become extra measurements.
+
 ## Viewing every frame
 
 `cell-views` exports every source frame as a lossless PNG at its original size, plus labelled,

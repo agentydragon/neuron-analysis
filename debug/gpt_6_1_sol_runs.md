@@ -1,7 +1,7 @@
 # GPT-6.1 Sol: baseline and prompt v2
 
-Snapshot: 2026-10-21 05:05 UTC (2026-10-20 PDT). Five baseline runs and four v2
-slice runs have completed; the v2 full-video run is still pending. These are single
+Both batches completed by 2026-10-21 05:14:36 UTC (2026-10-20 PDT): five baseline
+runs and five v2 runs, including both full videos. These are single
 attempts, not evidence of a reliable prompt effect.
 
 ## Conditions and results
@@ -30,7 +30,7 @@ Scores are percentages. Time is agent execution time, excluding setup and scorin
 | Case | Prompt | Same cell | Different cell | Marks touched | Mark share | All-pass | IDs | Agent time |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |
 | Full | Baseline | 71.6 | 80.1 | 94.4 | 88.6 | no | 36 | 23:38 |
-| Full | V2 | pending | pending | pending | pending | pending | — | — |
+| Full | V2 | 83.2 | 99.7 | 100 | 97.1 | no | 29 | 28:49 |
 | 24–32 | Baseline | 99.6 | 99.6 | 100 | 99.8 | yes | 56 | 12:03 |
 | 24–32 | V2 | 97.2 | 97.2 | 100 | 98.6 | yes | 37 | 11:00 |
 | 52–58 | Baseline | 69.9 | 69.0 | 90 | 83.7 | no | 28 | 8:46 |
@@ -40,7 +40,7 @@ Scores are percentages. Time is agent execution time, excluding setup and scorin
 | 66–72 | Baseline | 94.2 | 94.2 | 100 | 97.1 | yes | 25 | 4:58 |
 | 66–72 | V2 | 100 | 100 | 100 | 100 | yes | 25 | 3:20 |
 
-All nine completed agents exited successfully without timing out. V2 improves the
+All ten agents exited successfully without timing out. V2 improves the
 slice all-pass count from 3/4 to 4/4 and touches every marked spot, but its soft
 scores regress substantially on 58–62 and slightly on 24–32. The binary all-pass
 test uses best-matching identities and whether marks are touched; it does not
@@ -66,7 +66,7 @@ the saved baseline annotations, not caused by MP4 conversion or plotting:
   budget does not by itself prove the image ambiguity was resolvable.
 - The old prompt allowed a partial hand-off. V2 already requires revisiting pose
   transitions, checking neighborhoods and preserving identity; its full-video
-  result has not yet been assessed.
+  result is described below.
 
 Evidence is in the baseline full run's
 `outputs/20261020T214601_full.annotations.json` and
@@ -108,9 +108,8 @@ some earlier cells were missed, and some masks may have split or merged.
 
 ## Follow-ups
 
-1. Inspect v2's full-video answer for the same mass ID reset when it finishes.
-   Compare track lifetimes, area curves and the marked cross-jump pairs, not just
-   whether every frame has masks.
+1. Investigate the two remaining marked identity failures in v2's full-video
+   answer (frames 52–58), and review continuity for unmarked cells as well.
 2. Make a focused cross-transition review: side-by-side native crops of several
    frames before and after a jump, a persistent identity table, and explicit
    candidate links with their supporting shape/neighborhood evidence. Work in
@@ -122,6 +121,22 @@ some earlier cells were missed, and some masks may have split or merged.
 4. Repeat old/v2 matched conditions; use independently reviewed cross-jump links
    for evaluation. Expand the continuity checks beyond the current three marked
    cells, and address false positives and boundary quality separately.
+
+## V2 full-video result
+
+V2 annotates all 73 frames with 29 IDs and 2,012 masks. There is no mass ID reset
+at frames 29–30: all 29 IDs appear on both sides, and all three hand-marked
+24–32 same-cell pairs pass. That addresses the particular baseline failure on
+those marked cells; retaining IDs alone does not validate every unmarked match.
+
+Coverage improves from 34/36 to 36/36 touched marks. Same-cell pairs improve from
+14/18 to 16/18 passed, and different-cell pairs from 116/132 to 132/132. The two
+remaining same-cell failures are both in frames 52–58: a mark owned by C01 becomes
+C03, and one owned by C02 becomes C04, with full pixel coverage at each endpoint.
+These are identity errors despite successful detection, and all-pass remains false.
+Agent time rises from 23:38 to 28:49. The agent reports uncertainty around
+transitions 54–55 and 63–64. With one attempt per condition, this remains a case
+study rather than a reliable estimate of the prompt's effect.
 
 ## Continuity requirement clarified after these launches
 
@@ -143,7 +158,7 @@ and saved answers are unchanged, and these results do not evaluate the new wordi
 Rendered baseline videos and area charts are local in
 `runs/20261021T042016Z_gpt-6.1-sol_medium_b5b35b_rendered-clips/`.
 The chart uses source-video seconds and the sum of each mask's horizontal-run
-lengths. Missing entries are gaps, not zero-sized cells. The baseline full run's
-native transcript export reported `OutputLimitExceededError`; its CLI events,
+lengths. Missing entries are gaps, not zero-sized cells. Both full runs' native
+transcript exports reported `OutputLimitExceededError`; their CLI events,
 final hand-off, status and saved annotations remain available. Agent statements
 about opening every overlay are self-reports, not an independent visual audit.
