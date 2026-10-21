@@ -1,5 +1,12 @@
 # TODO
 
+- [ ] Investigate whole groups of identities restarting across pose jumps, starting
+      with baseline full-video frames 29–30 (15 s): review supported links, compare
+      v2's full run, and test focused cross-transition reconciliation and track-lifetime
+      diagnostics. See `debug/gpt_6_1_sol_runs.md`; preserve the original saved answers.
+- [ ] Repeat matched GPT-6.1 Sol medium baseline/v2 runs (initially five per prompt
+      per slice), reporting score distributions and runtime. Single attempts and
+      different slices do not establish a prompt effect; assess full-video tracking separately.
 - [ ] Pave a durable launch/resume procedure for long parallel Codex jobs and
       investigate their unexpected SIGTERM exits (see `debug/parallel_run_aborts.md`).
       Preserve each run's existing conversation, progress files, and native trace
