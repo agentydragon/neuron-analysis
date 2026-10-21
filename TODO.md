@@ -13,3 +13,11 @@
       `data/eval/` still describe the intended cells.
 - [ ] Add a false-positive measure: paint regions where there should be no cell and score how
       much of an agent's mask area falls there. Today nothing penalizes extra cells.
+- [ ] Apply the prompt changes listed in `debug/haiku_clip_runs.md` (remove the early-stop text, require full
+      annotation, warn that poses jump, require viewing every input frame, require viewing every overlay, and
+      describe the region as the side/belly band rather than a fixed outline), then compare v2 on Haiku with the
+      current prompt on Sonnet on all four clips, repeating the weaker clips.
+- [ ] Compare against the ground-truth annotation file once it exists, and re-run all conditions on
+      `data/timelapse1.avi`. The first rollouts used the old 1280x944 video; the 24-32 rerun on the new video
+      should go in its own `runs/` folder.
+- [ ] Later: a judge agent that reviews an annotator's rendered overlays and sends it back to fix problems.
