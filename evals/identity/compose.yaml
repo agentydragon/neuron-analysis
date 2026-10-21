@@ -1,9 +1,9 @@
 services:
   default:
-    build:
-      context: ../..
-      dockerfile: evals/identity/Dockerfile
-    image: neuron-identity-sandbox
+    image: python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
     init: true
     command: tail -f /dev/null
     working_dir: /workspace
+    environment:
+      # Passed through from the host when set, so the token never appears in the commands Inspect logs.
+      CLAUDE_CODE_OAUTH_TOKEN:

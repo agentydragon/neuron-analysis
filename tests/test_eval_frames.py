@@ -5,7 +5,8 @@ import av
 from PIL import Image
 import pytest
 
-from neuron_tracking import eval_frames
+from cell_tracking import eval_frames
+from cell_tracking.eval_frames import FramesManifest
 
 
 def write_clip(path, count=4):
@@ -27,9 +28,9 @@ def test_extracts_selected_frames_with_manifest(tmp_path, monkeypatch):
         "sys.argv", ["x", "--source", str(clip), "--output", str(tmp_path / "out"), "--frame", "2", "--frame", "0", "--sheets"]
     )
     eval_frames.main()
-    manifest = json.loads((tmp_path / "out" / "frames.json").read_text())
-    assert [record["frame_index"] for record in manifest["frames"]] == [0, 2]
-    assert manifest["frames"][1]["timestamp_s"] == pytest.approx(1.0)
+    manifest = FramesManifest.model_validate_json((tmp_path / "out" / "frames.json").read_text())
+    assert [record.frame_index for record in manifest.frames] == [0, 2]
+    assert manifest.frames[1].timestamp_s == pytest.approx(1.0)
     assert (tmp_path / "out" / "frames" / "frame_002.png").exists()
     assert list((tmp_path / "out" / "sheets").glob("sheet_*.png"))
 

@@ -6,4 +6,5 @@ __pycache__/
 *.egg-info/
 dist/
 runs/
-evals/identity/extra-ca.crt
+evals/identity/compose.local.yaml
+annotations.schema.json

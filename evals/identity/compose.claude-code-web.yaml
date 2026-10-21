@@ -1,0 +1,17 @@
+# Sandbox for Claude Code on the web, whose network intercepts TLS with a private CA that
+# containers must trust. Used by evals/identity/run-claude-code-web.sh.
+services:
+  default:
+    image: python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+    init: true
+    command: tail -f /dev/null
+    working_dir: /workspace
+    volumes:
+      - /root/.ccr/ca-bundle.crt:/etc/ssl/proxy-ca.crt:ro
+    environment:
+      # Passed through from the host when set, so the token never appears in the commands Inspect logs.
+      CLAUDE_CODE_OAUTH_TOKEN:
+      SSL_CERT_FILE: /etc/ssl/proxy-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/proxy-ca.crt
+      PIP_CERT: /etc/ssl/proxy-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ssl/proxy-ca.crt
