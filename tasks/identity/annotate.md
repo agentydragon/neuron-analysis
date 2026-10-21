@@ -53,10 +53,12 @@ sheets. `source.txt` contains the source video's filename for the commands below
    Across an abrupt pose change, compare the arrangement of neighboring cells,
    their shapes and their processes to maintain identities. Inspect native crops
    from several frames on both sides and follow candidates forward and backward.
-   Before creating a new ID, check whether the cell belongs to an existing track.
-   Reconcile any temporary IDs with existing tracks wherever the source supports
-   the link, updating all affected masks. Do not restart a group of identities or
-   leave a frame unannotated because a pose jump or identity match is difficult.
+   Before creating a new ID, check whether you have already identified that cell
+   in another frame.
+   Use the existing ID wherever the source supports the match. If review reveals
+   that one cell has multiple IDs, correct all affected masks to use one ID.
+   Do not restart a group of identities or leave a frame unannotated because a
+   pose jump or identity match is difficult.
 3. Generate overlays from the **saved** annotations for every frame:
 
    ```bash
@@ -89,14 +91,13 @@ sheets. `source.txt` contains the source video's filename for the commands below
    identity alternatives explicitly, without claiming an established association.
    Uncertainty about boundary pixels does not justify separate IDs for a
    recognizable cell. Leave an identity link unresolved only when a specific
-   visual ambiguity remains after cross-frame review; calling IDs provisional
-   does not complete the linking work.
+   visual ambiguity remains after cross-frame review.
    Do not present guesses as observed pixels. A cell that is not visible in a frame, or
    is out of frame, has no entry for that frame; say in your final response where you
    are unsure.
 6. Before hand-off, account for every source frame and every cell in the region.
-   Review where each track starts and ends, especially when many IDs end and new
-   IDs appear together. Check the source to distinguish visibility changes from
+   Review the first and last frame annotated for each cell ID, especially when
+   many IDs end and new IDs appear together. Check the source to distinguish visibility changes from
    broken links, and reconcile every recognizable match under one persistent ID.
    Complete the annotations and visual review throughout the entire sequence.
    A valid JSON file or a successful rendering command does not satisfy these requirements.

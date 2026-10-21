@@ -127,12 +127,15 @@ some earlier cells were missed, and some masks may have split or merged.
 
 The task owner's requirement is that recognizable matches must share one cell ID,
 regardless of position, pose or frame distance. `tasks/identity/annotate.md` now
-explicitly requires checking existing tracks before introducing new IDs,
-reconciling temporary IDs across all affected masks, reviewing transitions in both
-temporal directions, and checking every track's start and end before hand-off.
+explicitly requires checking previously identified cells before introducing new IDs,
+using the existing ID for supported matches, correcting duplicate IDs across all
+affected masks, reviewing transitions in both
+temporal directions, and checking each cell ID's first and last annotated frame before hand-off.
 Boundary uncertainty does not excuse leaving a recognizable identity split.
-Genuine ambiguity must be specific and remain after cross-frame review; a
-provisional label alone is not a completed identity decision.
+Genuine ambiguity must be specific and remain after cross-frame review. The prompt
+does not suggest creating temporary or provisional IDs as a workflow.
+The agent-facing wording uses cell IDs rather than "tracks": identity spans the
+whole video, including pose changes, rather than restarting for each continuous pose.
 
 This follow-up was made after both batches were launched. Their staged prompts
 and saved answers are unchanged, and these results do not evaluate the new wording.
