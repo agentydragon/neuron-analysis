@@ -13,14 +13,14 @@ workspace="$run/workspace"
 
 mkdir -p "$workspace/output"
 cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/target.md" "$workspace/"
-uv run --project "$repo" --no-sync python -m cell_tracking.schema cells --output "$workspace/annotations.schema.json"
+uv run --project "$repo" --no-sync python -m cell_tracking.schema --output "$workspace/annotations.schema.json"
 cp "$repo/data/IMG_6128.AVI" "$workspace/"
 cp "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/target.jpg"
 cp "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
 mkdir "$workspace/cell_tracking"
 # Only the annotation model and renderer are copied; evaluation, clip and checking code stays out.
-cp "$repo/cell_tracking/annotations.py" "$repo/cell_tracking/hashing.py" "$repo/cell_tracking/masks.py" "$repo/cell_tracking/render.py" "$workspace/cell_tracking/"
-sed -i '/^cell-check\|^cell-identity\|^cell-eval-frames/d' "$workspace/pyproject.toml"
+cp "$repo/cell_tracking/core.py" "$repo/cell_tracking/hashing.py" "$repo/cell_tracking/masks.py" "$repo/cell_tracking/render.py" "$workspace/cell_tracking/"
+sed -i '/^cell-identity\|^cell-eval-frames/d' "$workspace/pyproject.toml"
 printf '# Renderer workspace\n' > "$workspace/README.md"
 
 [ "${2:-}" != "--stage-only" ] || { echo "$workspace"; exit 0; }

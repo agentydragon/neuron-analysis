@@ -5,9 +5,7 @@ import av
 import pytest
 from PIL import Image
 
-from cell_tracking.annotations import Annotations
-from cell_tracking.masks import CellMask, CellMasks, color_for, load_annotations, to_annotations
-from cell_tracking.render import Layer, hash_file, render
+from cell_tracking.masks import CellMask, CellMasks, VideoInfo, color_for
 
 
 def write_video(path, count=3, size=(32, 24)):
@@ -58,33 +56,14 @@ def test_colors_are_assigned_deterministically_and_distinctly():
     assert len(set(colors)) == 6 and colors == [color_for(index, 6) for index in range(6)]
 
 
-def test_full_format_gets_sorted_ids_assigned_colors_and_absent_frames(tmp_path):
+def test_colors_follow_sorted_ids(tmp_path):
+    colors = masks().colors()
+    assert list(colors) == ["a", "b"] and colors["a"] == color_for(0, 2) and colors["b"] == color_for(1, 2)
+
+
+def test_video_info_reports_size_and_every_frame_time(tmp_path):
     video = tmp_path / "clip.avi"
     write_video(video)
-    annotations = load_annotations(masks().model_dump_json(), video)
-    assert [cell.id for cell in annotations.cells] == ["a", "b"]
-    assert len({cell.color for cell in annotations.cells}) == 2
-    assert len(annotations.frames) == 3 and len(annotations.observations) == 6
-    absent = next(o for o in annotations.observations if o.cell_id == "b" and o.frame_index == 1)
-    assert absent.visibility == "not_visible" and absent.body == []
-    assert annotations.source.sha256 == hash_file(video) and (annotations.source.width, annotations.source.height) == (32, 24)
-
-
-def test_full_format_files_still_load_for_rendering(tmp_path):
-    video = tmp_path / "clip.avi"
-    write_video(video)
-    full = load_annotations(masks().model_dump_json(), video)
-    again = load_annotations(full.model_dump_json(), video)
-    assert again == full and isinstance(again, Annotations)
-
-
-def test_renderer_draws_whole_cell_masks(tmp_path):
-    video = tmp_path / "clip.avi"
-    write_video(video)
-    path = tmp_path / "annotations.json"
-    path.write_text(masks().model_dump_json())
-    report = render(video, path, tmp_path / "out" / "frame.png", frame_index=0, layer=Layer.COMBINED, cell_ids=None, labels=True)
-    assert (tmp_path / "out" / "frame.png").exists() and report.frame_indices == [0]
-    path.write_text(json.dumps({"masks": [{"cell": "a", "frame": 9, "mask": [[1, 1, 2]]}]}))
-    with pytest.raises(ValueError, match="past the end"):
-        render(video, path, tmp_path / "out" / "other.png", frame_index=0, layer=Layer.COMBINED, cell_ids=None, labels=True)
+    info = VideoInfo.probe(video)
+    assert (info.width, info.height) == (32, 24) and len(info.timestamps_s) == 3
+    assert info.timestamps_s == sorted(info.timestamps_s)

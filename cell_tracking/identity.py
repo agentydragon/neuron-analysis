@@ -3,19 +3,17 @@
 import argparse
 import json
 from collections import Counter
-from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from PIL import Image
-from pydantic import Field, StrictInt, ValidationError, model_validator
+from pydantic import Field, StrictInt, ValidationError, computed_field, model_validator
 
-from cell_tracking.annotations import Annotations, Mask, Record, Source
+from cell_tracking.core import Mask, Record, Source
 from cell_tracking.eval_frames import FramesManifest
 from cell_tracking.hashing import hash_file
-from cell_tracking.legacy import parse_any
-from cell_tracking.masks import CellMask, CellMasks
+from cell_tracking.masks import CellMasks
 
 type Pixels = set[tuple[int, int]]
 
@@ -171,29 +169,34 @@ def derive(frames_dir: Path, marked_dir: Path) -> IdentityMarks:
     return IdentityMarks(schema_version=1, source=source, groups=groups)
 
 
-@dataclass(frozen=True)
-class Owned:
+class MarkMatch(Record):
+    """How the predicted cells cover one of your marks."""
+
     group: str
     color: str
     frame_index: int
-    owners: frozenset[str]
-    share: float  # fraction of the mark's pixels under the best-matching cell
-    shares: dict[str, float]  # each cell's part of the mark; a pixel under several cells is split evenly
+    owners: Annotated[list[str], Field(description="Cells with the most mask pixels under the mark; ties keep every tied id.")]
+    share: Annotated[float, Field(description="Fraction of the mark's pixels under the best-matching cell.")]
+    shares: Annotated[dict[str, float], Field(description="Each cell's part of the mark; a pixel under several cells is split evenly.")]
 
 
-@dataclass(frozen=True)
-class Verdict:
-    kind: str
-    first: Owned
-    second: Owned
+class PairScore(Record):
+    """Two marks that should be the same cell (same color) or different cells (different colors)."""
 
+    kind: Literal["same_cell", "different_cell"]
+    first: MarkMatch
+    second: MarkMatch
+
+    @computed_field
     @property
     def passed(self) -> bool:
         both = bool(self.first.owners) and bool(self.second.owners)
+        shared = set(self.first.owners) & set(self.second.owners)
         if self.kind == "same_cell":
-            return both and bool(self.first.owners & self.second.owners)
+            return both and bool(shared)
         return both and not (len(self.first.owners) == 1 and self.first.owners == self.second.owners)
 
+    @computed_field
     @property
     def score(self) -> float:
         """Pick a random pixel from each mark: the chance both are under the same cell (same-cell pairs) or under
@@ -205,28 +208,42 @@ class Verdict:
         return max(0.0, sum(first.values()) * sum(second.values()) - same)
 
 
-def from_annotations(annotations: Annotations) -> CellMasks:
-    """Whole-cell masks from the full format: every layer of each visible observation, merged."""
-    entries = []
-    for observation in annotations.observations:
-        pixels: Pixels = set()
-        for _, mask in observation.iter_masks():
-            pixels |= to_pixels(mask)
-        if pixels:
-            entries.append(CellMask(cell=observation.cell_id, frame=observation.frame_index, mask=to_runs(pixels)))
-    return CellMasks(masks=entries)
+class PairSummary(Record):
+    passed: int
+    total: int
+    score: Annotated[float, Field(description="Mean pair score.")]
 
 
-def load_masks(raw: str | bytes) -> CellMasks:
-    """Read whole-cell masks, converting a file in the full annotation format (current or earlier names)."""
-    parsed = parse_any(raw)
-    return parsed if isinstance(parsed, CellMasks) else from_annotations(parsed)
+class Coverage(Record):
+    passed: Annotated[int, Field(description="Marks touched by at least one predicted cell.")]
+    total: int
 
 
-def match_mark(mark: Pixels, masks: CellMasks, frame_index: int) -> tuple[frozenset[str], float, dict[str, float]]:
-    """Cells with the most mask pixels under the mark (ties keep every tied ID), the share of the mark's pixels
-    the best cell covers (0 when no cell touches it), and each cell's part of the mark, where a pixel under
-    several cells is split evenly between them."""
+class Evaluation(Record):
+    """The scores for one annotation file; when it could not be scored, `valid` is false and `reason` says why."""
+
+    valid: bool
+    reason: str | None = None
+    cells: Annotated[int, Field(description="Distinct cell ids in the file.")] = 0
+    entries: Annotated[int, Field(description="Mask entries (cell, frame) in the file.")] = 0
+    marks_covered: Coverage = Coverage(passed=0, total=0)
+    mark_share: Annotated[float, Field(description="Mean over marks of the share under the best-matching cell.")] = 0.0
+    same_cell: PairSummary = PairSummary(passed=0, total=0, score=0.0)
+    different_cell: PairSummary = PairSummary(passed=0, total=0, score=0.0)
+    failures: list[PairScore] = []
+
+    @computed_field
+    @property
+    def all_pass(self) -> bool:
+        covered = self.marks_covered
+        return self.valid and not self.failures and covered.total > 0 and covered.passed == covered.total
+
+    @classmethod
+    def invalid(cls, reason: str) -> Self:
+        return cls(valid=False, reason=reason[:2000])
+
+
+def match_mark(mark: Pixels, masks: CellMasks, frame_index: int, *, group: str, color: str) -> MarkMatch:
     hits: dict[str, Pixels] = {}
     for entry in masks.masks:
         if entry.frame != frame_index:
@@ -235,65 +252,63 @@ def match_mark(mark: Pixels, masks: CellMasks, frame_index: int) -> tuple[frozen
         if hit:
             hits[entry.cell] = hit
     best = max((len(hit) for hit in hits.values()), default=0)
-    owners = frozenset(cell for cell, hit in hits.items() if len(hit) == best)
     covering = Counter(pixel for hit in hits.values() for pixel in hit)
-    shares = {cell: sum(1 / covering[pixel] for pixel in hit) / len(mark) for cell, hit in hits.items()}
-    return owners, best / len(mark), shares
+    return MarkMatch(
+        group=group,
+        color=color,
+        frame_index=frame_index,
+        owners=sorted(cell for cell, hit in hits.items() if len(hit) == best),
+        share=best / len(mark),
+        shares={cell: sum(1 / covering[pixel] for pixel in hit) / len(mark) for cell, hit in hits.items()},
+    )
 
 
-def verdicts(masks: CellMasks, marks: IdentityMarks) -> list[Verdict]:
+def pair_scores(masks: CellMasks, marks: IdentityMarks) -> list[PairScore]:
     result = []
     for group in marks.groups:
-        owned = [
-            Owned(group.name, cell.color, mark.frame_index, *match_mark(to_pixels(mark.pixels), masks, mark.frame_index))
+        matches = [
+            match_mark(to_pixels(mark.pixels), masks, mark.frame_index, group=group.name, color=cell.color)
             for cell in group.cells
             for mark in cell.marks
         ]
-        for first, second in combinations(owned, 2):
+        for first, second in combinations(matches, 2):
             if first.frame_index == second.frame_index and first.color == second.color:
                 continue
-            result.append(Verdict("same_cell" if first.color == second.color else "different_cell", first, second))
+            result.append(PairScore(kind="same_cell" if first.color == second.color else "different_cell", first=first, second=second))
     return result
 
 
-def summarize(items: list[Verdict]) -> dict:
-    def describe(owned: Owned) -> dict:
-        return {
-            "cell": owned.color,
-            "frame": owned.frame_index,
-            "predicted_ids": sorted(owned.owners),
-            "share": round(owned.share, 3),
-            "shares": {cell: round(share, 3) for cell, share in sorted(owned.shares.items())},
-        }
-
-    marks = {(v.first.group, v.first.color, v.first.frame_index): v.first for v in items} | {
-        (v.second.group, v.second.color, v.second.frame_index): v.second for v in items
-    }
-    totals = {kind: [v for v in items if v.kind == kind] for kind in ("same_cell", "different_cell")}
-    return {
-        "marks_covered": {"passed": sum(bool(m.owners) for m in marks.values()), "total": len(marks)},
-        "mark_share": sum(m.share for m in marks.values()) / len(marks) if marks else 0.0,
-        **{
-            kind: {"passed": sum(v.passed for v in vs), "total": len(vs), "score": sum(v.score for v in vs) / len(vs) if vs else 0.0}
-            for kind, vs in totals.items()
-        },
-        "failures": [
-            {"group": v.first.group, "kind": v.kind, "score": round(v.score, 3), "first": describe(v.first), "second": describe(v.second)}
-            for v in items
-            if not v.passed
-        ],
+def score(masks: CellMasks, marks: IdentityMarks) -> Evaluation:
+    pairs = pair_scores(masks, marks)
+    matches = {(p.first.group, p.first.color, p.first.frame_index): p.first for p in pairs} | {
+        (p.second.group, p.second.color, p.second.frame_index): p.second for p in pairs
     }
 
+    def summary(kind: str) -> PairSummary:
+        chosen = [p for p in pairs if p.kind == kind]
+        mean = sum(p.score for p in chosen) / len(chosen) if chosen else 0.0
+        return PairSummary(passed=sum(p.passed for p in chosen), total=len(chosen), score=mean)
 
-def evaluate(annotations_json: str | bytes, marks: IdentityMarks, frame_count: int | None = None) -> dict:
-    """Score annotation JSON text; malformed or out-of-bounds input is reported, not raised."""
+    return Evaluation(
+        valid=True,
+        cells=len({entry.cell for entry in masks.masks}),
+        entries=len(masks.masks),
+        marks_covered=Coverage(passed=sum(bool(m.owners) for m in matches.values()), total=len(matches)),
+        mark_share=sum(m.share for m in matches.values()) / len(matches) if matches else 0.0,
+        same_cell=summary("same_cell"),
+        different_cell=summary("different_cell"),
+        failures=[p for p in pairs if not p.passed],
+    )
+
+
+def evaluate(annotations_json: str | bytes, marks: IdentityMarks, frame_count: int | None = None) -> Evaluation:
+    """Score annotation JSON text; malformed or out-of-bounds input gives an invalid Evaluation, not an exception."""
     try:
-        masks = load_masks(annotations_json)
+        masks = CellMasks.model_validate_json(annotations_json)
         masks.check_bounds(marks.source.width, marks.source.height, frame_count)
-        report = summarize(verdicts(masks, marks))
+        return score(masks, marks)
     except (ValidationError, ValueError) as error:
-        return {"valid": False, "reason": str(error)[:2000]}
-    return {"valid": True, "cells": len({entry.cell for entry in masks.masks}), "entries": len(masks.masks), **report}
+        return Evaluation.invalid(str(error))
 
 
 def main() -> None:
@@ -313,12 +328,9 @@ def main() -> None:
         print(json.dumps({group.name: [cell.color for cell in group.cells] for group in marks.groups}))
         return
     marks = IdentityMarks.model_validate_json(arguments.marks.read_bytes())
-    masks = load_masks(arguments.annotations.read_bytes())
-    masks.check_bounds(marks.source.width, marks.source.height)
-    items = verdicts(masks, marks)
-    report = summarize(items)
-    print(json.dumps(report, indent=2))
-    if report["failures"] or report["marks_covered"]["passed"] != report["marks_covered"]["total"]:
+    evaluation = evaluate(arguments.annotations.read_bytes(), marks)
+    print(evaluation.model_dump_json(indent=2))
+    if not evaluation.all_pass:
         raise SystemExit(1)
 
 

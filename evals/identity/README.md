@@ -42,7 +42,7 @@ failing pairs are in the sample's score metadata.
 
 A plain `python:3.12-slim` image pinned by digest (`compose.yaml`), with no Dockerfile. For the Claude
 agents Inspect uploads the prompt, target definition, schema, video, reference image (as `target.jpg`) and the renderer source
-(`cell_tracking/annotations.py`, `hashing.py`, `masks.py`, `render.py`) into `/workspace`, then runs a setup script as root that
+(`cell_tracking/core.py`, `hashing.py`, `masks.py`, `render.py`) into `/workspace`, then runs a setup script as root that
 creates an `agent` user, installs the locked environment (`uv sync --locked --no-dev --group agent`, which
 adds numpy, scipy, scikit-image, opencv, matplotlib and imageio) and the pinned Claude Code CLI. Setup takes
 about 40 seconds and needs network access. Only the renderer is exposed; check, identity and eval code is

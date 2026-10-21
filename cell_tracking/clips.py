@@ -5,7 +5,7 @@ from pathlib import Path
 
 import av
 
-from cell_tracking.annotations import Source
+from cell_tracking.core import Source
 from cell_tracking.identity import FrameMark, Group, IdentityMarks
 from cell_tracking.render import hash_file
 

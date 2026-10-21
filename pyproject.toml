@@ -16,7 +16,6 @@ dependencies = [
 
 [project.scripts]
 cell-render = "cell_tracking.render:main"
-cell-check = "cell_tracking.check:main"
 cell-eval-frames = "cell_tracking.eval_frames:main"
 cell-identity = "cell_tracking.identity:main"
 

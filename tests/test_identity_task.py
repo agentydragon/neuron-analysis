@@ -24,7 +24,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
     assert not [path for path in staged if path.startswith(("data/", "tests/", "debug/")) or "sample_checks" in path]
     assert {path for path in staged if path.startswith("cell_tracking/")} == {
-        "cell_tracking/annotations.py",
+        "cell_tracking/core.py",
         "cell_tracking/hashing.py",
         "cell_tracking/masks.py",
         "cell_tracking/render.py",

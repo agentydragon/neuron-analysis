@@ -13,7 +13,6 @@ The default agent, claude_cli, runs the Claude Code CLI in the sandbox with a su
 `claude` instead routes model calls through Inspect and needs an Anthropic API key.
 """
 
-import json
 import os
 import shlex
 import time
@@ -85,7 +84,7 @@ SETUP = f"""
 set -euo pipefail
 cd /workspace
 useradd --create-home --shell /bin/bash agent
-sed -i '/^cell-check\\|^cell-identity\\|^cell-eval-frames/d' pyproject.toml
+sed -i '/^cell-identity\\|^cell-eval-frames/d' pyproject.toml
 printf '# Renderer workspace\\n' > README.md
 pip install --quiet --no-cache-dir uv nodejs-wheel
 UV_PROJECT_ENVIRONMENT=/workspace/.venv uv sync --locked --no-dev --group agent
@@ -163,20 +162,20 @@ def identity_scorer(variants: dict[str, Variant]):
         saved.parent.mkdir(parents=True, exist_ok=True)
         saved.write_text(text)
         variant = variants[str(state.sample_id)]
-        report = evaluate(text, variant.marks, variant.frame_count)
-        if not report["valid"]:
-            return failed(report["reason"])
-        same, different, covered = report["same_cell"], report["different_cell"], report["marks_covered"]
+        evaluation = evaluate(text, variant.marks, variant.frame_count)
+        if not evaluation.valid:
+            return failed(evaluation.reason or "invalid")
+        covered = evaluation.marks_covered
         value = {
             "valid": 1.0,
-            "same_cell": same["score"],
-            "different_cell": different["score"],
-            "marks_covered": covered["passed"] / covered["total"],
-            "mark_share": report["mark_share"],
+            "same_cell": evaluation.same_cell.score,
+            "different_cell": evaluation.different_cell.score,
+            "marks_covered": covered.passed / covered.total,
+            "mark_share": evaluation.mark_share,
+            "all_pass": float(evaluation.all_pass),
         }
-        value["all_pass"] = float(not report["failures"] and value["marks_covered"] == 1.0)
-        report["saved_annotations"] = str(saved)
-        return Score(value=value, explanation=json.dumps({key: report[key] for key in report if key != "valid"}), metadata=report)
+        metadata = evaluation.model_dump(mode="json") | {"saved_annotations": str(saved)}
+        return Score(value=value, explanation=evaluation.model_dump_json(exclude={"valid", "reason"}), metadata=metadata)
 
     return score
 

@@ -41,8 +41,8 @@ uv run cell-identity check --annotations runs/<run>/annotations.json \
 the inside of outlined marks and rejects a colour with two disconnected blobs in a frame, a mark that
 encloses another, or a frame that is not the one in `frames.json`.
 
-`check` gives each mark the neuron with the most mask pixels under it (body, branches or uncertainty;
-ties keep every tied ID). Every pair of marks in a group is then an assertion: the same colour in
-different frames must have a common neuron, and different colours must not share one. A mark that
-touches no neuron fails its pairs. The JSON reports pass counts per kind plus each failure; the exit
-status is 1 unless everything passes. Unmarked cells are not scored, so extra neurons are not penalised.
+`check` matches each mark to the predicted cells under it (ties keep every tied id). Every pair of marks in a
+group is then an assertion: the same colour in different frames should be the same predicted cell, and different
+colours should not share one. A mark that no cell touches fails its pairs. The JSON report (an `Evaluation`)
+gives pass counts and soft scores per kind, `marks_covered`, `mark_share` and each failing pair; the exit status
+is 1 unless everything passes. Unmarked cells are not scored, so extra cells are not penalised.

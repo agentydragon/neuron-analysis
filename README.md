@@ -1,21 +1,19 @@
-# Neuron analysis
+# Cell analysis
 
-Explore using one Codex conversation to segment every visible pixel of each
-neuron in microscopy video, separate its body and branches, preserve its identity
-across frames, and inspect and correct its rendered masks before hand-off.
+Can an agent find the dark cells along the side of a *Xenopus laevis* embryo in a microscopy video and keep
+each cell's identity across frames? This repository holds the sample video, a small set of hand-painted
+identity marks, the task an agent is given, the tools that render and score its answer, and an
+[Inspect](https://inspect.aisi.org.uk/) eval that runs the whole thing in a container.
 
-The annotation prompt is in `annotate.md`, with mask semantics in
-`annotation_format.md` and the machine-readable format in a JSON Schema derived
-from the pydantic model (`uv run python -m cell_tracking.schema full`; nothing is
-committed). Five independent `gpt-6-luna` / `xhigh` trials have
-finished; their artifacts and native traces are under
-`~/drive/neuron-tracking/runs/`.
-All produced partial annotations; see [the trial review](debug/first_trials.md).
-Codex may use Nix and write its own processing scripts. Follow-up work is in
-`TODO.md`.
+What the dark cells are is not confirmed yet (see `TODO.md`), so the task and the code call them cells.
 
-Keep each run in one conversation. Context compaction is allowed; save identity
-decisions, annotation revisions, and review progress on disk for continuation.
+| Path | What it holds |
+| --- | --- |
+| `data/` | The original video and target reference (Git LFS), and `data/eval/`: the frames and hand-painted marks the eval scores against. |
+| `cell_tracking/` | The package: whole-cell mask format, renderer, identity scoring, and frame and clip tools. |
+| `tasks/identity/` | What the agent reads (prompt and target description) and a Codex launcher. |
+| `evals/identity/` | The Inspect eval: sandbox, agents and scorer. |
+| `debug/` | Notes on running long Codex jobs. |
 
 ## Setup
 
@@ -28,160 +26,72 @@ uv sync --locked
 uv run pytest
 ```
 
-`uv` installs the Python version in `.python-version` and the locked dependencies.
-The Python package and tests are independent of Ducktape. The command-line tools are
-`uv run cell-render` and `uv run cell-check`.
+`uv` installs the Python version in `.python-version` and the locked dependencies. The command-line tools are
+`uv run cell-render`, `uv run cell-identity` and `uv run cell-eval-frames`.
 
-The original video and target reference are tracked with Git LFS under `data/`.
-Their hashes and source metadata are in `data/README.md`.
-Keep generated frames, annotations, overlays, videos and session logs in `runs/`
-(ignored by Git) or another output directory. Existing trial artifacts remain in
-`~/drive/neuron-tracking/runs/`, with native transcripts in
-`~/drive/neuron-tracking/transcripts/`. The Drive folder's `README.md` describes
-those saved runs. The rejected online candidate clips remain in Drive and are not
-part of this repository's dataset.
+The original video and target reference are tracked with Git LFS under `data/`; their hashes and source
+metadata are in `data/README.md`. Keep generated frames, annotations, overlays, videos and session logs in
+`runs/` (ignored by Git) or another output directory.
 
-## First run
+## What the agent produces
 
-Run from the repository root, using the source clip and reference JPEG in `data/`:
+One file, `annotations.json`: a whole-cell mask for each cell in each frame where it is visible, and nothing
+else (no source, frame list, colors or review state).
 
-```bash
-neuron_run="$PWD/runs/luna_xhigh"
-mkdir -p "$neuron_run"
-codex exec --model gpt-6-luna -c 'model_reasoning_effort="xhigh"' \
-  --approve-for-me --json \
-  --output-last-message "$neuron_run/handoff.md" \
-  "Read annotate.md and sample_task.md. Process all frames from $PWD/data/IMG_6128.AVI, using $PWD/data/photo_2026-10-19_14-30-28.jpg as the target reference. Save the colored annotated AVI, pixel annotations, schema, tracking CSV, and review record under $neuron_run." \
-  > "$neuron_run/codex_events.jsonl"
+```json
+{
+  "masks": [
+    { "cell": "A", "frame": 0, "mask": [[10, 20, 27], [11, 20, 23]] },
+    { "cell": "A", "frame": 1, "mask": [[12, 22, 29], [13, 22, 25]] },
+    { "cell": "B", "frame": 0, "mask": [[30, 5, 9]] }
+  ]
+}
 ```
 
-Use a fresh output directory for each run. This uses the existing Codex login
-and provider, with the selected model and effort set for this invocation only.
-Long runs need a durable process supervisor when their invoking agent's process
-lifetime is uncertain; unexpected SIGTERM exits occurred during the first trials.
-See [the abort investigation](debug/parallel_run_aborts.md) for the observed
-mitigation and the limits of the diagnosis.
+A mask is a list of horizontal runs `[y, x_start, x_end]` with an exclusive end: `[10, 20, 27]` is the pixels
+(20, 10) through (26, 10). Runs are sorted by row then column and must not overlap or touch within a mask; a cell
+that is not visible in a frame has no entry for it. The model is `CellMasks` in `cell_tracking/masks.py`. The JSON
+Schema is derived from it when needed and is not committed: `uv run python -m cell_tracking.schema`, printed or
+written with `--output FILE`.
 
-## Shared renderer
+## Rendering
 
-The helper reads source video and `annotations.json`; it does not detect neurons
-or change masks. Sample-specific target constraints stay in `sample_task.md`.
-Each ID keeps its JSON color across frames and all mask layers. Body pixels use
-a translucent fill, branches a stronger fill, and uncertainty a striped fill in
-that same color. Labels show the ID with its color border and leader line.
-
-From the repository root, render a single frame or the full AVI:
+The renderer reads the video itself for dimensions and timing and gives each cell a stable color from its id.
+From the repository root, render one frame or the whole video:
 
 ```bash
-uv run cell-render \
-  --source "$PWD/data/IMG_6128.AVI" \
-  --annotations "$HOME/drive/neuron-tracking/runs/luna_xhigh_03/annotations.json" \
+uv run cell-render --source "$PWD/data/IMG_6128.AVI" --annotations runs/example/annotations.json \
   --frame 68 --output "$PWD/runs/renderer/frame_068.png"
 
-uv run cell-render \
-  --source "$PWD/data/IMG_6128.AVI" \
-  --annotations "$HOME/drive/neuron-tracking/runs/luna_xhigh_03/annotations.json" \
+uv run cell-render --source "$PWD/data/IMG_6128.AVI" --annotations runs/example/annotations.json \
   --output "$PWD/runs/renderer/annotated.avi"
 ```
 
-Use `--layer body`, `--layer branches`, or `--layer uncertain` for separate
-views. Repeat `--cell ID` to select identities; `--no-labels` leaves pixel
-boundaries unobscured. Masks from different neurons draw in ID order; use
-individual-ID views to inspect overlapping ownership. Sparse annotations can
-render an anchor frame; full-video export requires every source frame.
-
-The helper checks source hash, dimensions, timestamps, colors, references, and
-mask invariants. Every output gets a `.png.json` or `.avi.json` report recording
-the annotation hash/revision, palette, selected frames/layer, and output hash.
-AVI uses lossless FFV1 with exactly one encoded frame per source frame and a
-constant cadence based on source duration. The helper decodes the result to
-check frame count and dimensions. Its report keeps original and output
-timestamps and both durations so timing changes are explicit. Rendering is not
-evidence of correct neuron selection or tracking; open and inspect the outputs.
-
-## Sample sanity checks
-
-These are evaluator checks. For a blind prompt comparison, provide the annotation
-agent only its instructions, input media, target definition, format/schema, and
-renderer access. Keep these criteria, the reviewed annotations, and prior runs
-outside its input workspace; evaluate its saved output afterward. The
-`sample_task.md` contains only the sample's anatomical target definition.
-
-Run the checks against an annotation JSON from the repository root:
-
-```bash
-uv run cell-check \
-  --annotations "$HOME/drive/neuron-tracking/runs/manual_frame_review/annotations.json" \
-  --checks sample_checks.json
-```
-
-`sample_checks.json` pins this source by SHA-256 and dimensions and selects
-frame 52 at 25.9 seconds. Its named checks require:
-
-- 12–20 predicted body centers inside `[245, 560, 635, 805]`, the reviewed
-  side/belly crop.
-- At least one predicted body center inside `[332, 714, 348, 731]`, around the
-  blue example's soma.
-- Body-pixel overlap with each of these boxes, covering the full body, branch,
-  and uncertainty mask extent of the corresponding reviewed candidate:
-
-  | Example                 | Box                    |
-  | ----------------------- | ---------------------- |
-  | Dark blue               | `[487, 643, 519, 669]` |
-  | Dark teal just below it | `[493, 676, 518, 693]` |
-  | Leftmost red/pink       | `[254, 758, 290, 786]` |
-
-- All four examples must be present and have separate identities: no predicted
-  neuron ID may match more than one of their boxes.
-
-Regions use source pixels as `[left, top, right, bottom]`, excluding the right
-and bottom edges. `body_center` uses the area-weighted centroid of the saved
-`body` pixels. `body_overlap` requires at least one body pixel in the box, even
-if its center lies outside. Each ID counts once; branch and uncertainty pixels
-do not satisfy either predicate. Colors, ID names, and review labels do not
-determine a location match. Distinctness compares the matched IDs and also fails
-if an example is missing. The checker prints JSON with pass/fail, matching IDs,
-and IDs shared between examples, exits 0 when all checks pass, and exits 1 for
-failed checks. Wrong source/frame metadata raises an input error.
-
-Add named regions to this file or create another sample/frame check file as
-examples accumulate, and add named `distinct` groups for examples that must
-have separate IDs. A null `max_count` leaves the upper bound open. These are
-coarse checks: passing does not establish mask boundaries or correct tracking.
-None of the first five runs pass all checks; see
-[the baseline comparison](debug/sanity_check_baseline.md).
-
-## Schemas
-
-The JSON Schemas are derived from the pydantic models when needed and are not committed:
-`uv run python -m cell_tracking.schema full` (full annotations) or `cells` (the identity task's whole-cell
-masks), printed or written with `--output FILE`. A root-level `annotations.schema.json` is git-ignored, for
-the first-run command below to read: create it with `--output annotations.schema.json` before launching.
-
-## Older annotation files
-
-Files saved with the earlier field names (`neurons`, `neuron_id`, now `cells` and `cell_id`) are read
-directly by `cell-check` and `cell-identity`. The renderer needs the current format; convert an old file
-with `uv run python -m cell_tracking.legacy OLD.json NEW.json`.
+Repeat `--cell ID` to draw only some cells; `--no-labels` leaves pixel boundaries unobscured. Every output gets a
+`.png.json` or `.avi.json` report with the annotation and output hashes, the colors, and the original and output
+timestamps. The AVI is lossless FFV1 with one frame per source frame and a constant cadence; the renderer decodes
+it to check frame count and dimensions. Rendering is not evidence of correct cells or tracking; open the outputs.
 
 ## Identity eval
 
-Hand-painted identity marks in `data/eval/` (see its README) assert which marks across frames are the
-same cell. Run `uv run cell-identity check --annotations ANNOTATIONS --marks data/eval/identity_marks.json`.
-It checks tracking consistency on the marked cells only, not mask boundaries or extra neurons.
+Hand-painted marks in `data/eval/` (see its README) say which spots in which frames are the same cell. Score an
+annotation file with
 
-## Identity-only task
+```bash
+uv run cell-identity check --annotations ANNOTATIONS --marks data/eval/identity_marks.json
+```
 
-`tasks/identity/` is a reduced task: annotate each neuron's identity across frames from the video and
-the reference image, without separating body from branches. `tasks/identity/run.sh NAME` stages a clean
-workspace without evaluation data and launches Codex in it; see `tasks/identity/README.md`.
+The scores are `same_cell` and `different_cell` (soft, so partial coverage and split marks give fractions),
+`marks_covered`, `mark_share` and `all_pass`, described in `evals/identity/README.md`. They cover the marked
+cells only: nothing penalizes extra cells, and mask boundaries are not compared.
 
-## Inspect eval
+## Running an agent
 
-`evals/identity/` runs the identity task as an [Inspect](https://inspect.aisi.org.uk/) eval in a Docker
-sandbox and scores `output/annotations.json` against the painted marks. The Claude Code agent can use a
-subscription token instead of the metered API, including from inside a Claude Code on the web session;
-see `evals/identity/README.md`.
+- `tasks/identity/run.sh NAME` stages a clean workspace (prompt, target text, schema, video, reference image and
+  renderer code, with no evaluation data) and launches Codex in it; see `tasks/identity/README.md`.
+- `evals/identity/` runs the same task as an Inspect eval in a Docker sandbox, with a Claude Code agent that can
+  use a subscription token instead of the metered API, including from inside a Claude Code on the web session;
+  see `evals/identity/README.md`.
 
 ## Source
 

@@ -6,7 +6,7 @@ from PIL import Image
 
 from cell_tracking.clips import clip_marks, clip_range, cut_clip
 from cell_tracking.identity import Cell, FrameMark, Group, IdentityMarks
-from cell_tracking.annotations import Source
+from cell_tracking.core import Source
 
 
 def write_source(path, count=10):

@@ -9,7 +9,7 @@ import av
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import Field, StrictInt
 
-from cell_tracking.annotations import Record
+from cell_tracking.core import Record
 from cell_tracking.hashing import hash_file
 
 

@@ -12,9 +12,8 @@ Follow that region as the specimen moves and rotates; the outline guides target
 selection and is not an already aligned segmentation mask. Continue through the
 whole clip without waiting for intermediate approval.
 
-This task is about identity. Do not separate body from branches: for each cell,
-mark everything you can see of that one cell (its body and any processes attached
-to it) as a single mask. Follow `annotations.schema.json` for how to save it: it defines the coordinates, the
+This task is about identity: for each cell, mark everything you can see of that one
+cell (its body and any processes attached to it) as a single mask. Follow `annotations.schema.json` for how to save it: it defines the coordinates, the
 mask encoding and the format of each entry, and it includes an example.
 
 Work in one conversation; context compaction and CLI continuation are allowed.

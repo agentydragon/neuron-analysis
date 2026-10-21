@@ -1,26 +1,13 @@
-"""Whole-cell masks: the identity task's output format, with a loader that lets the renderer read it."""
+"""Whole-cell masks: the identity task's output format."""
 
 import colorsys
 from pathlib import Path
 from typing import Annotated, Self
 
 import av
-from pydantic import ConfigDict, Discriminator, Field, StrictInt, Tag, TypeAdapter, model_validator
+from pydantic import ConfigDict, Field, StrictInt, model_validator
 
-from cell_tracking.annotations import (
-    Annotations,
-    CellIdentity,
-    Frame,
-    Observation,
-    Record,
-    RUN_ENCODING,
-    Run,
-    Source,
-    Visibility,
-    validate_runs,
-)
-from cell_tracking.hashing import hash_file
-
+from cell_tracking.core import RUN_ENCODING, Record, Run, validate_runs
 
 EXAMPLE = {
     "masks": [
@@ -83,55 +70,28 @@ class CellMasks(Record):
                 raise ValueError(f"Frame {entry.frame} is past the end of the video ({frame_count} frames)")
             validate_runs(entry.mask, width, height, f"cell {entry.cell!r}, frame {entry.frame}")
 
+    def colors(self) -> dict[str, str]:
+        """A stable, well-spread display color per cell (ids sorted), so the agent never has to pick colors."""
+        ids = sorted({entry.cell for entry in self.masks})
+        return {identity: color_for(index, len(ids)) for index, identity in enumerate(ids)}
+
 
 def color_for(index: int, total: int) -> str:
-    """A stable, well-spread color for the index-th of total cells, so the agent never has to pick colors."""
     red, green, blue = colorsys.hsv_to_rgb(index / max(total, 1), 0.85, 0.95)
     return "#%02x%02x%02x" % (round(red * 255), round(green * 255), round(blue * 255))
 
 
-def to_annotations(masks: CellMasks, source: Source, frames: list[Frame]) -> Annotations:
-    """The full format for rendering: ids sorted, colors assigned, absent frames marked not visible."""
-    ids = sorted({entry.cell for entry in masks.masks})
-    by_key = {(entry.cell, entry.frame): entry.mask for entry in masks.masks}
-    cells = [CellIdentity(id=identity, color=color_for(index, len(ids))) for index, identity in enumerate(ids)]
-    observations = [
-        Observation(
-            cell_id=identity,
-            frame_index=frame.frame_index,
-            visibility=Visibility.VISIBLE if (identity, frame.frame_index) in by_key else Visibility.NOT_VISIBLE,
-            body=by_key.get((identity, frame.frame_index), []),
-            branches=[],
-            uncertain=[],
-        )
-        for identity in ids
-        for frame in frames
-    ]
-    return Annotations(schema_version=1, revision=1, source=source, frames=frames, cells=cells, observations=observations)
+class VideoInfo(Record):
+    """Decoded size and presentation time of every frame of a video."""
 
+    width: Annotated[StrictInt, Field(gt=0)]
+    height: Annotated[StrictInt, Field(gt=0)]
+    timestamps_s: Annotated[list[float], Field(min_length=1, description="Frame i is at timestamps_s[i].")]
 
-def probe_video(video: Path) -> tuple[list[Frame], int, int]:
-    with av.open(str(video)) as container:
-        decoded = list(container.decode(video=0))
-    frames = [Frame(frame_index=index, timestamp_s=float(frame.time)) for index, frame in enumerate(decoded)]
-    return frames, decoded[0].width, decoded[0].height
-
-
-def _format(value: object) -> str:
-    return "masks" if isinstance(value, dict) and "masks" in value else "full"
-
-
-RENDERABLE = TypeAdapter(
-    Annotated[Annotated[CellMasks, Tag("masks")] | Annotated[Annotations, Tag("full")], Discriminator(_format)]
-)
-
-
-def load_annotations(raw: str | bytes, video: Path) -> Annotations:
-    """Read either format for rendering. Whole-cell masks borrow dimensions and timing from the video."""
-    parsed = RENDERABLE.validate_json(raw)
-    if isinstance(parsed, Annotations):
-        return parsed
-    frames, width, height = probe_video(video)
-    parsed.check_bounds(width, height, len(frames))
-    source = Source(path=video.name, sha256=hash_file(video), width=width, height=height)
-    return to_annotations(parsed, source, frames)
+    @classmethod
+    def probe(cls, video: Path) -> Self:
+        with av.open(str(video)) as container:
+            frames = list(container.decode(video=0))
+        if not frames:
+            raise ValueError("Source contains no video frames")
+        return cls(width=frames[0].width, height=frames[0].height, timestamps_s=[float(frame.time) for frame in frames])

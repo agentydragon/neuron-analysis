@@ -1,32 +1,15 @@
 # TODO
 
-- [ ] Extend the reviewed frame-52 examples to short identity tracks and nearby
-      excluded structures before another full-clip run. Add more checks as those
-      examples are reviewed; the accepted count, body locations, and distinct IDs are in
-      `sample_checks.json`.
-- [ ] Extend shared validation to CSV consistency and visual review coverage of
-      the exported annotation revision. The renderer already validates source
-      identity, timestamps, masks, ID colors, and decoded video dimensions/count.
-- [ ] Compare the five runs against source pixels: missed targets and branches,
-      background leakage, body/branch boundaries, and identity drift. Use their
-      native Codex traces for ad hoc investigation.
-- [ ] Improve target coverage and tracking through pose changes. A full set of
-      frame records does not establish a complete neuron census or correct IDs.
-      Keep unresolved candidate groups separate from individual neuron identities.
-- [ ] Strengthen visual review so drift and masks outside the specimen trigger
-      corrections. Require native-resolution comparisons at difficult transitions
-      and recheck changed annotations before export.
 - [ ] Pave a durable launch/resume procedure for long parallel Codex jobs and
-      investigate their unexpected SIGTERM exits. Preserve each run's existing
-      conversation, progress files, and native trace across restarts.
+      investigate their unexpected SIGTERM exits (see `debug/parallel_run_aborts.md`).
+      Preserve each run's existing conversation, progress files, and native trace
+      across restarts.
 - [ ] Check with the principal investigator what the dark cells along the side/belly of the
       embryo are. The task owner was told they are neurons, but others on the project are
       skeptical, and an agent judged them to be pigment cells and annotated nothing. Until
       then everything an agent can read says "cells" or "dark cells" and states that cell type
       is not asserted. Once confirmed, finish the terminology cleanup: the prose in the READMEs,
-      `PLAN.md` and the debug notes, the repo name, and the eval names. Also decide whether the
-      marks in `data/eval/` still describe the intended cells.
-
-Compaction is allowed. Keep each run in one Codex conversation and persist the
-identity table, annotation revision, unresolved decisions, and review progress so
-the agent can continue reliably after compaction.
+      the debug notes, the repo name, and the eval names. Also decide whether the marks in
+      `data/eval/` still describe the intended cells.
+- [ ] Add a false-positive measure: paint regions where there should be no cell and score how
+      much of an agent's mask area falls there. Today nothing penalizes extra cells.

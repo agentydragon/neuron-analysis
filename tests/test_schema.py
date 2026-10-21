@@ -3,47 +3,26 @@ import json
 import jsonschema
 import pytest
 
-from cell_tracking.annotations import Annotations
 from cell_tracking.masks import EXAMPLE, CellMasks
-from cell_tracking.schema import MODELS, render, schema_for, write
-
-FULL_EXAMPLE = {
-    "schema_version": 1,
-    "revision": 1,
-    "source": {"path": "clip.avi", "sha256": "0" * 64, "width": 64, "height": 48},
-    "frames": [{"frame_index": 0, "timestamp_s": 0.0}],
-    "cells": [{"id": "N001", "color": "#e6194b"}],
-    "observations": [
-        {
-            "cell_id": "N001",
-            "frame_index": 0,
-            "visibility": "visible",
-            "body": [[10, 20, 27]],
-            "branches": [],
-            "uncertain": [],
-        }
-    ],
-}
+from cell_tracking.schema import render, schema, write
 
 
-def test_schemas_are_derived_from_the_models_and_carry_their_guidance():
-    cells = schema_for("cells")
-    assert "no entry for that frame" in cells["description"]
-    assert cells["examples"] == [EXAMPLE]
-    assert cells["$defs"]["CellMask"]["properties"]["mask"]["minItems"] == 1
-    assert "exclusive x_end" in cells["$defs"]["CellMask"]["properties"]["mask"]["description"]
-    assert render("cells") == json.dumps(cells, indent=2) + "\n"
+def test_the_schema_is_derived_from_the_model_and_carries_its_guidance():
+    derived = schema()
+    assert "no entry for that frame" in derived["description"]
+    assert derived["examples"] == [EXAMPLE]
+    assert derived["$defs"]["CellMask"]["properties"]["mask"]["minItems"] == 1
+    assert "exclusive x_end" in derived["$defs"]["CellMask"]["properties"]["mask"]["description"]
+    assert render() == json.dumps(derived, indent=2) + "\n"
 
 
-def test_examples_are_valid_under_their_schema_and_model():
-    Annotations.model_validate_json(json.dumps(FULL_EXAMPLE))
-    jsonschema.Draft202012Validator(schema_for("full")).validate(FULL_EXAMPLE)
+def test_the_example_is_valid_under_the_schema_and_the_model():
     CellMasks.model_validate_json(json.dumps(EXAMPLE))
-    jsonschema.Draft202012Validator(schema_for("cells")).validate(EXAMPLE)
+    jsonschema.Draft202012Validator(schema()).validate(EXAMPLE)
 
 
-def test_neither_schema_uses_the_word_neuron():
-    assert all("neuron" not in render(kind).lower() for kind in MODELS)
+def test_the_schema_does_not_use_the_word_neuron():
+    assert "neuron" not in render().lower()
 
 
 @pytest.mark.parametrize(
@@ -57,12 +36,12 @@ def test_neither_schema_uses_the_word_neuron():
         {},
     ],
 )
-def test_the_cells_schema_rejects_what_the_model_rejects(broken):
-    assert not jsonschema.Draft202012Validator(schema_for("cells")).is_valid(broken)
+def test_the_schema_rejects_what_the_model_rejects(broken):
+    assert not jsonschema.Draft202012Validator(schema()).is_valid(broken)
     with pytest.raises(ValueError):
         CellMasks.model_validate_json(json.dumps(broken))
 
 
 def test_write_creates_the_file_and_parents(tmp_path):
-    path = write("cells", tmp_path / "nested" / "schema.json")
-    assert json.loads(path.read_text()) == schema_for("cells")
+    path = write(tmp_path / "nested" / "schema.json")
+    assert json.loads(path.read_text()) == schema()
