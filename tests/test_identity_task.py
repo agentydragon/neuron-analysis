@@ -9,7 +9,7 @@ SCRIPT = ROOT / "tasks" / "identity" / "run.sh"
 
 
 def stage(tmp_path, name="trial"):
-    env = {**os.environ, "RUNS_DIR": str(tmp_path)}
+    env = {**os.environ, "RUNS_DIR": str(tmp_path / "runs"), "CACHE_DIR": str(tmp_path / "cache")}
     return subprocess.run([SCRIPT, name, "--stage-only"], env=env, capture_output=True, text=True)
 
 
@@ -17,7 +17,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     result = stage(tmp_path)
     assert result.returncode == 0, result.stderr
     workspace = Path(result.stdout.strip())
-    assert workspace == tmp_path / "identity_trial" / "workspace"
+    assert workspace == tmp_path / "cache" / "workspaces" / "identity_trial"
     for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
         assert (workspace / name).is_file()
     assert (workspace / "output").is_dir()

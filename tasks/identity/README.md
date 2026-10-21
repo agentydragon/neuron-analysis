@@ -23,10 +23,10 @@ also gets the video and the reference image, uploaded as `target.jpg`.
 tasks/identity/run.sh NAME
 ```
 
-This stages `runs/identity_NAME/workspace/` containing only the prompt, target text,
+This stages `.cache/workspaces/identity_NAME/` (git-ignored) containing only the prompt, target text,
 schema, video, reference image and renderer code, then starts Codex there with the
-same model settings as the first runs. The agent writes under `workspace/output/`;
-the hand-off message and event log go next to the workspace. Use a fresh `NAME`
+same model settings as the first runs. The agent writes under `output/`; the tracked record of
+the run, in `runs/identity_NAME/`, holds the event log, the hand-off message and a copy of the answer. Use a fresh `NAME`
 each time. `--stage-only` stages without launching. Evaluation data in `data/eval/`
 is not copied, so the workspace does not contain it; the prompt additionally tells
 the agent not to look for evaluation answers.
@@ -35,7 +35,7 @@ the agent not to look for evaluation answers.
 
 ```bash
 uv run cell-identity check \
-  --annotations runs/identity_NAME/workspace/output/annotations.json \
+  --annotations runs/identity_NAME/annotations.json \
   --marks data/eval/identity_marks.json
 ```
 

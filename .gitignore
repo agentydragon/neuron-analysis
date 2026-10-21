@@ -5,6 +5,5 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 dist/
-runs/
-evals/identity/compose.local.yaml
-annotations.schema.json
+.cache/
+runs/scratch/

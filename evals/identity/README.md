@@ -6,6 +6,10 @@ Docker sandbox, asks for `output/annotations.json`, and scores it against the pa
 `CellMasks` pydantic model (the same model the agent's schema is derived from) and the video's dimensions and
 frame count; an invalid or missing file scores 0 with the reason recorded. The marks and scoring code stay on the host; the sandbox never contains them.
 
+Each launch through `run-claude-code-web.sh` writes one folder, `runs/<UTC time>_<task>/`, holding the Inspect log
+(`*.eval`), `outputs/` (the saved `annotations.json` per sample) and `transcripts/`; it is tracked with Git LFS. Runs
+that don't go through the launcher, such as stubs, write their outputs to the git-ignored `runs/scratch/`.
+
 ```bash
 uv run --group evals inspect eval evals/identity/task.py@identity --model mockllm/model -T agent=stub_oracle
 ```
@@ -18,13 +22,13 @@ Always name the task (`@identity` or `@identity_clips`): a bare `task.py` runs e
   (`CLAUDE_CODE_OAUTH_TOKEN`), so nothing is billed to the metered API. Inspect makes no model calls, so
   pass `--model mockllm/model`. Options: `-T model=haiku|sonnet|...`, `-T effort=low|medium|high|xhigh|max`,
   `-T minutes=120` (the agent's wall-clock limit, 2 hours by default for both tasks; the sample limit adds
-  5 minutes for setup and scoring). The raw `stream-json` transcript goes to `runs/transcripts/`.
+  5 minutes for setup and scoring). The raw `stream-json` transcript goes to the run folder's `transcripts/`.
 - `claude`: Inspect's own Claude Code agent; model calls go through Inspect and need an Anthropic API key.
 - `stub_oracle`, `stub_empty`, `stub_invalid`: write a fixed file with no model, to test the pipeline.
   The oracle reproduces the marks and must score 1.0 on every metric.
 
 `identity_clips` is a smaller version: one lossless clip per marked group (its frames plus `-T margin=2`
-frames on each side, cut by `cell_tracking/clips.py` and cached in `runs/clips/`), run as parallel samples
+frames on each side, cut by `cell_tracking/clips.py` and cached in `.cache/clips/`), run as parallel samples
 that are each scored against only that group's marks, remapped to the clip's frame numbers. Choose groups
 with `-T groups=24-32,66-72`; the time limit is the same 2 hours as for the full video. The clips keep the source's pixels
 exactly but not its timestamps (constant 2 fps), and the agent is told the clip is `clip.avi`.
@@ -76,5 +80,5 @@ that session's own login. Three environment-specific steps, all in the script or
 What this exposes (the token reaches the container through the compose file's `environment` pass-through, not
 through Inspect's exec options, so it is not written into the eval logs; check a log before sharing one): the token is in the environment of the processes the agent runs, so the agent can read
 it. Treat it as the session's login: it is scoped to that session, never written to a file or to Git by
-this code, and the saved transcripts do not contain it unless the agent echoes it, so keep `runs/` out of
-Git and do not share it. Runs use the session's subscription allowance, so long runs count against it.
+this code, and the saved transcripts do not contain it unless the agent echoes it, so scan a run folder for it before
+committing and do not share one that has it. Runs use the session's subscription allowance, so long runs count against it.

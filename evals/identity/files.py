@@ -5,7 +5,7 @@ from pathlib import Path
 from cell_tracking.schema import write
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_CACHE = ROOT / "runs" / "schema" / "annotations.schema.json"
+SCHEMA_CACHE = ROOT / ".cache" / "schema" / "annotations.schema.json"
 
 
 def workspace_files(video: Path, video_name: str) -> dict[str, Path]:
