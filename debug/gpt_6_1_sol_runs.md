@@ -115,13 +115,27 @@ some earlier cells were missed, and some masks may have split or merged.
    frames before and after a jump, a persistent identity table, and explicit
    candidate links with their supporting shape/neighborhood evidence. Work in
    both temporal directions and resolve easy anchors before ambiguous neighbors.
-   Test whether this process helps before adding more generic prompt text.
+   Test whether this process improves continuity without forcing unsupported links.
 3. Add a review diagnostic for many tracks ending and new tracks starting at one
    frame. Such a burst should trigger source review, not automatically count as an
    error: visibility really can change. Keep area/lifetime charts as review aids.
 4. Repeat old/v2 matched conditions; use independently reviewed cross-jump links
    for evaluation. Expand the continuity checks beyond the current three marked
    cells, and address false positives and boundary quality separately.
+
+## Continuity requirement clarified after these launches
+
+The task owner's requirement is that recognizable matches must share one cell ID,
+regardless of position, pose or frame distance. `tasks/identity/annotate.md` now
+explicitly requires checking existing tracks before introducing new IDs,
+reconciling temporary IDs across all affected masks, reviewing transitions in both
+temporal directions, and checking every track's start and end before hand-off.
+Boundary uncertainty does not excuse leaving a recognizable identity split.
+Genuine ambiguity must be specific and remain after cross-frame review; a
+provisional label alone is not a completed identity decision.
+
+This follow-up was made after both batches were launched. Their staged prompts
+and saved answers are unchanged, and these results do not evaluate the new wording.
 
 Rendered baseline videos and area charts are local in
 `runs/20261021T042016Z_gpt-6.1-sol_medium_b5b35b_rendered-clips/`.

@@ -47,11 +47,16 @@ sheets. `source.txt` contains the source video's filename for the commands below
    duplicate IDs for one cell, and different cells sharing an ID. Revisit
    earlier frames when later evidence changes a decision. Verify disappearance
    against the source; difficulty matching an identity does not establish that a
-   cell is absent. The same cell seen in distant frames, or from a very
-   different view, must keep its ID.
+   cell is absent. If a cell at one position in one frame is recognizable as the
+   same cell at another position in another frame, both masks must use the same
+   ID, including across distant frames and very different views.
    Across an abrupt pose change, compare the arrangement of neighboring cells,
-   their shapes and their processes to maintain identities. Do not leave a frame
-   unannotated because a pose jump or identity match is difficult.
+   their shapes and their processes to maintain identities. Inspect native crops
+   from several frames on both sides and follow candidates forward and backward.
+   Before creating a new ID, check whether the cell belongs to an existing track.
+   Reconcile any temporary IDs with existing tracks wherever the source supports
+   the link, updating all affected masks. Do not restart a group of identities or
+   leave a frame unannotated because a pose jump or identity match is difficult.
 3. Generate overlays from the **saved** annotations for every frame:
 
    ```bash
@@ -82,10 +87,17 @@ sheets. `source.txt` contains the source video's filename for the commands below
    separate identities even when parts of them cannot be assigned. Never use one
    cell ID as a container for several unresolved cells. Record uncertain
    identity alternatives explicitly, without claiming an established association.
+   Uncertainty about boundary pixels does not justify separate IDs for a
+   recognizable cell. Leave an identity link unresolved only when a specific
+   visual ambiguity remains after cross-frame review; calling IDs provisional
+   does not complete the linking work.
    Do not present guesses as observed pixels. A cell that is not visible in a frame, or
    is out of frame, has no entry for that frame; say in your final response where you
    are unsure.
 6. Before hand-off, account for every source frame and every cell in the region.
+   Review where each track starts and ends, especially when many IDs end and new
+   IDs appear together. Check the source to distinguish visibility changes from
+   broken links, and reconcile every recognizable match under one persistent ID.
    Complete the annotations and visual review throughout the entire sequence.
    A valid JSON file or a successful rendering command does not satisfy these requirements.
 
