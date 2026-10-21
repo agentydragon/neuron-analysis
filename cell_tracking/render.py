@@ -27,6 +27,7 @@ class RenderReport(Record):
     output_timestamps_s: list[float] | None
     source_duration_s: float | None
     output_duration_s: float | None
+    output_source_frame_indices: list[int] | None = None
 
 
 def render_frame(
@@ -112,14 +113,17 @@ def render(
         raise ValueError(f"Unknown cell IDs: {sorted(selected - set(colors))}")
     if frame_index is not None and not 0 <= frame_index < frame_count:
         raise ValueError(f"Source has no frame {frame_index}")
-    expected_suffix = ".avi" if frame_index is None else ".png"
+    expected_suffix = ".mp4" if frame_index is None else ".png"
     if output.suffix.lower() != expected_suffix:
         raise ValueError(f"Output must use {expected_suffix}")
+    if frame_index is None and (info.width % 2 or info.height % 2):
+        raise ValueError("H.264 yuv420p video needs even frame dimensions; export PNG frames for this source")
     output.parent.mkdir(parents=True, exist_ok=True)
     indices = list(range(frame_count)) if frame_index is None else [frame_index]
     output_times: list[float] | None = None
     source_duration: float | None = None
     output_duration: float | None = None
+    output_indices: list[int] | None = None
     with TemporaryDirectory(dir=output.parent, prefix=".cell-render-") as temporary:
         rendered_path = Path(temporary) / output.name
         if frame_index is not None:
@@ -131,23 +135,36 @@ def render(
                         break
         else:
             source_duration = measure_source(source, info)
-            rate = (Fraction(frame_count) / Fraction(str(source_duration))).limit_denominator(100000)
-            with av.open(str(source)) as input_video, av.open(str(rendered_path), mode="w", format="avi") as encoded:
-                stream = encoded.add_stream("ffv1", rate=rate)
+            # Repeat frames at 30 fps for phone playback, keeping the source's total duration
+            # (rounded up by less than one output frame) and its existing constant cadence.
+            rate = 30
+            frame_span = Fraction(str(source_duration)) * rate / frame_count
+            output_indices = []
+            with av.open(str(source)) as input_video, av.open(
+                str(rendered_path), mode="w", format="mp4", options={"movflags": "+faststart"}
+            ) as encoded:
+                stream = encoded.add_stream(
+                    "libx264", rate=rate,
+                    options={"crf": "18", "preset": "medium", "profile": "high", "level": "4.0"},
+                )
                 stream.width = info.width
                 stream.height = info.height
-                stream.pix_fmt = "bgr0"
+                stream.pix_fmt = "yuv420p"
+                stream.codec_context.codec_tag = "avc1"
+                stream.codec_context.thread_count = 2
                 for index, frame in enumerate(input_video.decode(video=0)):
                     check_frame(frame, info)
                     image = render_frame(frame.to_image(), masks, colors, index, cell_ids=selected, labels=labels)
-                    rendered = av.VideoFrame.from_image(image)
-                    rendered.pts = index
-                    rendered.time_base = 1 / rate
-                    for packet in stream.encode(rendered):
-                        encoded.mux(packet)
+                    for output_index in range(len(output_indices), ceil((index + 1) * frame_span)):
+                        rendered = av.VideoFrame.from_image(image)
+                        rendered.pts = output_index
+                        rendered.time_base = Fraction(1, rate)
+                        for packet in stream.encode(rendered):
+                            encoded.mux(packet)
+                        output_indices.append(index)
                 for packet in stream.encode():
                     encoded.mux(packet)
-            output_times, output_duration = inspect_output(rendered_path, info)
+            output_times, output_duration = inspect_output(rendered_path, info, frame_count=len(output_indices))
         report = RenderReport(
             annotation_sha256=hashlib.sha256(annotation_bytes).hexdigest(),
             source_sha256=hash_file(source),
@@ -159,6 +176,7 @@ def render(
             output_timestamps_s=output_times,
             source_duration_s=source_duration,
             output_duration_s=output_duration,
+            output_source_frame_indices=output_indices,
         )
         temporary_report = Path(temporary) / report_path.name
         temporary_report.write_text(report.model_dump_json(indent=2) + "\n")
@@ -180,19 +198,19 @@ def measure_source(source: Path, info: VideoInfo) -> float:
     return float(end) - info.timestamps_s[0]
 
 
-def inspect_output(path: Path, info: VideoInfo) -> tuple[list[float], float]:
+def inspect_output(path: Path, info: VideoInfo, *, frame_count: int) -> tuple[list[float], float]:
     timestamps: list[float] = []
     end: Fraction | None = None
     with av.open(str(path)) as container:
         for frame in container.decode(video=0):
             if (frame.width, frame.height) != (info.width, info.height):
-                raise ValueError("Encoded AVI changed frame dimensions")
+                raise ValueError("Encoded MP4 changed frame dimensions")
             if frame.time is None or frame.pts is None or frame.time_base is None or frame.duration <= 0:
-                raise ValueError("Encoded AVI lacks timestamps or frame durations")
+                raise ValueError("Encoded MP4 lacks timestamps or frame durations")
             timestamps.append(frame.time)
             end = (frame.pts + frame.duration) * frame.time_base
-    if len(timestamps) != len(info.timestamps_s) or end is None:
-        raise ValueError("Encoded AVI changed frame count")
+    if len(timestamps) != frame_count or end is None:
+        raise ValueError("Encoded MP4 changed frame count")
     return timestamps, float(end)
 
 
@@ -201,7 +219,7 @@ def main() -> None:
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--annotations", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--frame", type=int, help="Render one frame to PNG; omit to export the entire AVI")
+    parser.add_argument("--frame", type=int, help="Render one frame to PNG; omit to export the entire H.264 MP4")
     parser.add_argument("--cell", action="append", help="Render only this cell id; repeat to select several")
     parser.add_argument("--no-labels", action="store_true")
     arguments = parser.parse_args()

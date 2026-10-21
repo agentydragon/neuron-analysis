@@ -6,7 +6,7 @@ from pathlib import Path
 
 import av
 import pytest
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 from pydantic import ValidationError
 
 from cell_tracking.masks import CellMask, CellMasks
@@ -65,40 +65,52 @@ def test_pixels_and_identity_colors(sample: tuple[Path, Path, CellMasks]) -> Non
     assert only_first.getpixel((80, 60)) == raw.getpixel((80, 60))
 
 
-def test_png_matches_lossless_avi_and_timing_is_reported(sample: tuple[Path, Path, CellMasks], tmp_path: Path) -> None:
+def test_mp4_is_phone_compatible_and_maps_repeated_frames_to_source(sample: tuple[Path, Path, CellMasks], tmp_path: Path) -> None:
     source, path, masks = sample
     png = tmp_path / "frame.png"
     still = render(source, path, png, frame_index=1, cell_ids=None, labels=True)
-    avi = tmp_path / "annotated.avi"
-    report = render(source, path, avi, frame_index=None, cell_ids=None, labels=True)
-    with av.open(str(avi)) as container:
+    mp4 = tmp_path / "annotated.mp4"
+    report = render(source, path, mp4, frame_index=None, cell_ids=None, labels=True)
+    with av.open(str(mp4)) as container:
         images = [frame.to_image() for frame in container.decode(video=0)]
-    assert len(images) == 3
+    assert len(images) == 42
     assert all(image.size == (128, 96) for image in images)
+    with av.open(str(mp4)) as container:
+        stream = container.streams.video[0]
+        assert stream.codec_context.name == "h264"
+        assert stream.codec_context.profile == "High"
+        assert stream.codec_context.format.name == "yuv420p"
+        assert stream.codec_context.codec_tag == "avc1"
+        assert stream.average_rate == 30
+    encoded = mp4.read_bytes()
+    assert encoded.index(b"moov") < encoded.index(b"mdat")
     with Image.open(png) as image:
-        assert images[1].tobytes() == image.tobytes()
+        assert max(ImageStat.Stat(ImageChops.difference(images[14], image.convert("RGB"))).mean) < 5
     assert still.cell_colors == report.cell_colors == masks.colors()
     assert report.frame_indices == [0, 1, 2]
     assert report.source_timestamps_s == [0, 0.4, 0.9]
-    assert report.output_timestamps_s == pytest.approx([0, 7 / 15, 14 / 15])
+    assert report.output_timestamps_s == pytest.approx([index / 30 for index in range(42)])
+    assert report.output_source_frame_indices == [0] * 14 + [1] * 14 + [2] * 14
     assert report.source_duration_s == pytest.approx(1.4)
     assert report.output_duration_s == pytest.approx(1.4)
-    assert report.output_sha256 == hash_file(avi)
+    assert report.output_sha256 == hash_file(mp4)
     assert report.annotation_sha256 == hash_file(path)
-    assert RenderReport.model_validate_json(avi.with_suffix(".avi.json").read_text()) == report
+    assert RenderReport.model_validate_json(mp4.with_suffix(".mp4.json").read_text()) == report
 
 
 def test_a_sparse_file_still_exports_every_source_frame(sample: tuple[Path, Path, CellMasks], tmp_path: Path) -> None:
     source, path, _ = sample
     path.write_text(CellMasks(masks=[CellMask(cell="only", frame=1, mask=[(30, 20, 30)])]).model_dump_json())
-    avi = tmp_path / "sparse.avi"
-    render(source, path, avi, frame_index=None, cell_ids=None, labels=False)
+    mp4 = tmp_path / "sparse.mp4"
+    render(source, path, mp4, frame_index=None, cell_ids=None, labels=False)
     raw = Image.new("RGB", (128, 96), (100, 100, 100))
-    with av.open(str(avi)) as container:
+    with av.open(str(mp4)) as container:
         images = [frame.to_image() for frame in container.decode(video=0)]
-    assert len(images) == 3
-    assert images[0].tobytes() == raw.tobytes() and images[2].tobytes() == raw.tobytes()
-    assert images[1].tobytes() != raw.tobytes()
+    assert len(images) == 42
+    for index in (0, 28):
+        assert max(ImageStat.Stat(ImageChops.difference(images[index], raw)).mean) < 2
+    # Sparse annotations affect the middle source frame, held for output frames 14..27.
+    assert images[14].getpixel((24, 30)) != images[0].getpixel((24, 30))
 
 
 @pytest.mark.parametrize("failure", ["bounds", "unsorted", "touching", "frame", "duplicate", "empty"])

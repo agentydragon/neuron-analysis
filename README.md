@@ -65,13 +65,17 @@ uv run cell-render --source "$PWD/data/timelapse1.avi" --annotations runs/exampl
   --frame 68 --output "$PWD/runs/renderer/frame_068.png"
 
 uv run cell-render --source "$PWD/data/timelapse1.avi" --annotations runs/example/annotations.json \
-  --output "$PWD/runs/renderer/annotated.avi"
+  --output "$PWD/runs/renderer/annotated.mp4"
 ```
 
 Repeat `--cell ID` to draw only some cells; `--no-labels` leaves pixel boundaries unobscured. Every output gets a
-`.png.json` or `.avi.json` report with the annotation and output hashes, the colors, and the original and output
-timestamps. The AVI is lossless FFV1 with one frame per source frame and a constant cadence; the renderer decodes
-it to check frame count and dimensions. Rendering is not evidence of correct cells or tracking; open the outputs.
+`.png.json` or `.mp4.json` report with the annotation and output hashes, the colors, and the original and output
+timestamps. Videos use H.264 High profile, level 4.0, CRF 18, yuv420p and MP4 faststart for sharing with phones.
+Frames repeat at 30 fps with a constant source-frame cadence and the original total duration rounded up by
+less than 1/30 second. The report maps each output frame back to its source frame; the renderer decodes the
+MP4 to check frame count and dimensions. Video dimensions must be even. For lossless pixel inspection use
+PNG exports or `cell-views`; internal eval clips remain lossless FFV1 AVI with unchanged frame numbering.
+Rendering is not evidence of correct cells or tracking; open the outputs.
 
 ## Viewing every frame
 
