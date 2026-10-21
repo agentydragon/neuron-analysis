@@ -18,7 +18,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     assert result.returncode == 0, result.stderr
     workspace = Path(result.stdout.strip())
     assert workspace == tmp_path / "cache" / "workspaces" / "identity_trial"
-    for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "timelapse1.avi", "pyproject.toml", "uv.lock"):
+    for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "timelapse1.avi", "source.txt", "pyproject.toml", "uv.lock"):
         assert (workspace / name).is_file()
     assert (workspace / "output").is_dir()
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
@@ -28,10 +28,13 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
         "cell_tracking/hashing.py",
         "cell_tracking/masks.py",
         "cell_tracking/render.py",
+        "cell_tracking/views.py",
     }
     pyproject = (workspace / "pyproject.toml").read_text()
     assert "cell-render" in pyproject and "cell-check" not in pyproject and "cell-identity" not in pyproject
     assert "identity_marks" not in "".join(path.read_text(errors="ignore") for path in workspace.glob("*.md"))
+    assert (workspace / "source.txt").read_text().strip() == "timelapse1.avi"
+    assert "cell-views" in pyproject
 
 
 def test_refuses_existing_run(tmp_path):
@@ -81,8 +84,8 @@ def test_nothing_in_the_staged_workspace_says_neuron():
             assert "neuron" not in path.name.lower()
             scanned += 1
     assert scanned >= 8
-    launch_line = next(line for line in SCRIPT.read_text().splitlines() if "Read annotate.md" in line)
-    assert "neuron" not in (launch_line + PROMPT).lower()
+    assert "python -m evals.identity.prompt" in SCRIPT.read_text()
+    assert "neuron" not in PROMPT.lower()
 
 
 def test_inspect_uploads_do_not_say_neuron():

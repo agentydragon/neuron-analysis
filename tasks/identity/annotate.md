@@ -8,9 +8,8 @@ result must satisfy the same requirements regardless of the tools you use.
 
 Use the source clip, reference image and output directory named in the launch
 prompt. `target.md` and the reference image define the region whose cells you are to annotate.
-Follow that region as the specimen moves and rotates; the outline guides target
-selection and is not an already aligned segmentation mask. Continue through the
-whole clip without waiting for intermediate approval.
+Continue through the whole clip without waiting for intermediate approval. Full
+annotation and visual review of every source frame are required.
 
 This task is about identity: for each cell, mark everything you can see of that one
 cell (its body and any processes attached to it) as a single mask. Follow `annotations.schema.json` for how to save it: it defines the coordinates, the
@@ -26,10 +25,19 @@ answers or any files outside this workspace.
 
 You may create tools that help you annotate, inspect and correct the data, using
 the Python environment here (`uv sync --locked`). Use `uv run cell-render` to
-display saved masks; run `uv run cell-render --help` for options.
+display saved masks and `uv run cell-views` for full-resolution PNGs and contact
+sheets. `source.txt` contains the source video's filename for the commands below.
 
-1. Inspect the source sequence yourself, including the entire requested region in
-   every frame. Use an overview to orient yourself and close, pixel-preserving
+1. Before annotating, generate contact sheets of **every raw input frame**:
+
+   ```bash
+   uv run cell-views --source "$(cat source.txt)" --output output/raw
+   ```
+
+   Open every image in `output/raw/sheets/` and inspect the entire requested
+   region in every frame. The sheet labels give zero-based frame indices and
+   timestamps. The specimen may twitch, rotate or jump abruptly between frames;
+   identify these transitions before starting. Use close, pixel-preserving
    views to tell neighboring cells apart. Establish which cells belong to the
    requested region from `target.md` and the reference image. You may begin with a clear frame or
    a few cells, but that does not reduce the scope of the task.
@@ -41,8 +49,21 @@ display saved masks; run `uv run cell-render --help` for options.
    against the source; difficulty matching an identity does not establish that a
    cell is absent. The same cell seen in distant frames, or from a very
    different view, must keep its ID.
-3. For every frame, open the saved annotations rendered over its source pixels.
-   Compare raw and annotated views over the whole region, with close crops wherever
+   Across an abrupt pose change, compare the arrangement of neighboring cells,
+   their shapes and their processes to maintain identities. Do not leave a frame
+   unannotated because a pose jump or identity match is difficult.
+3. Generate overlays from the **saved** annotations for every frame:
+
+   ```bash
+   REVIEW="output/review-$(date +%s%N)"
+   uv run cell-views --source "$(cat source.txt)" \
+     --annotations output/annotations.json --output "$REVIEW"
+   ```
+
+   Open every contact sheet in the printed `sheets/` paths, then open **every
+   full-resolution overlay** in that review directory's `frames/`. The raw
+   full-resolution frames are in `output/raw/frames/`. For every frame,
+   compare raw and annotated views over the whole region, with close crops wherever
    needed, and readable IDs; the renderer colors each cell consistently. Check both directions: every
    recognizable cell should be marked, and every marked pixel and identity should
    be supported by the source. Look for missed cells, background pixels, and
@@ -53,7 +74,10 @@ display saved masks; run `uv run cell-render --help` for options.
    changes across all affected frames. Continue until you have addressed the
    discrepancies you can resolve from the source. Checking a few examples does not
    validate the remaining cells or frames. Contact sheets alone cannot establish
-   which pixels belong to which cell.
+   which pixels belong to which cell. Rerun the overlay command after edits; it
+   creates a fresh review directory so older overlays cannot be mistaken for the
+   current saved annotations. `frames.json` records frame coverage and source and
+   annotation hashes; it does not establish that visual review occurred.
 5. Preserve uncertainty at the place it occurs. Distinguishable cells must have
    separate identities even when parts of them cannot be assigned. Never use one
    cell ID as a container for several unresolved cells. Record uncertain
@@ -62,9 +86,8 @@ display saved masks; run `uv run cell-render --help` for options.
    is out of frame, has no entry for that frame; say in your final response where you
    are unsure.
 6. Before hand-off, account for every source frame and every cell in the region.
-   A valid JSON file does not satisfy these requirements. If a resource limit or a specific ambiguity prevents
-   completion, save the work as partial and identify the exact affected frames,
-   regions, IDs and unresolved decisions; do not call an incomplete result complete.
+   Complete the annotations and visual review throughout the entire sequence.
+   A valid JSON file or a successful rendering command does not satisfy these requirements.
 
 Validate the JSON against `annotations.schema.json`, and separately check the image-dependent
 invariants it describes (run bounds, non-overlapping runs, frame indices inside the video, at most one
@@ -75,6 +98,6 @@ are in the video's decode order, starting at zero. Any later annotation change i
 your review of the affected views.
 
 The final response states annotation and review coverage (frames, IDs and regions you
-inspected), the unresolved identity or pixel alternatives and where they are, any
-incomplete work, and whether compaction occurred (or unknown if undetermined). Keep
+inspected), the unresolved identity or pixel alternatives and where they are,
+and whether compaction occurred (or unknown if undetermined). Keep
 your visual checks distinct from human review.

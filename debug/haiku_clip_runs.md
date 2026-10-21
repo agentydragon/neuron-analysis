@@ -30,14 +30,15 @@ clip size is checked). That invalid result was not kept. The rerun on the new vi
   and left those frames empty (58-62 frame 8, 52-58 frames 9-10) or gave the cells before and after the jump
   unrelated ids. An empty frame scores zero; a best guess might not.
 - **They stopped early and said so.** Each run used about 6 to 8 minutes of a 120 minute budget and called the
-  result partial. `annotate.md` step 6 allows exactly this ("save the work as partial and identify the exact
+  result partial. The prior `annotate.md` step 6 allowed exactly this ("save the work as partial and identify the exact
   affected frames"), and all three used it.
 - **Review was thin.** All three said their visual checks covered a few frames, although step 3 requires every
   frame.
 
-## Prompt changes to make next
+## Prompt v2 changes
 
-Decided with the task owner; not applied yet.
+Applied in `tasks/identity/annotate.md` and `target.md`, with tested `cell-views` commands
+for raw frames, saved-mask overlays and contact sheets. The following list records the original decisions:
 
 1. **Remove the license to stop early.** Delete the partial hand-off text in `annotate.md` step 6 and the
    final-response request to report incomplete work. State that full annotation of every frame is required.
@@ -48,9 +49,9 @@ Decided with the task owner; not applied yet.
 4. **Require validation by looking**: render an overlay for every frame and open each one, with a ready-made
    contact-sheet command for the annotated frames too. Contact sheets orient, close crops still decide pixels
    (keep the existing sentence on that).
-5. **Describe the region by anatomy, not coordinates.** In `target.md` and the launch prompt
-   (`evals/identity/prompt.py`), give the image as an illustration of the side/belly band and say it is not a
-   fixed pixel area. Do not add coordinates; the agent should infer it from the frames.
+5. **Describe the region by anatomy, not coordinates.** Keep the side/belly-band and illustrative-outline
+   guidance in `target.md`. The generic prompt and launch message refer to that file without specifying
+   anatomy or coordinates.
 
 ## Next experiments
 

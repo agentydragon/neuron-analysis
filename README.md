@@ -27,7 +27,7 @@ uv run pytest
 ```
 
 `uv` installs the Python version in `.python-version` and the locked dependencies. The command-line tools are
-`uv run cell-render`, `uv run cell-identity` and `uv run cell-eval-frames`.
+`uv run cell-render`, `uv run cell-views`, `uv run cell-identity` and `uv run cell-eval-frames`.
 
 The original video and target reference are tracked with Git LFS under `data/`; their hashes and source
 metadata are in `data/README.md`. Rollout data is tracked too, under Git LFS:
@@ -72,6 +72,23 @@ Repeat `--cell ID` to draw only some cells; `--no-labels` leaves pixel boundarie
 `.png.json` or `.avi.json` report with the annotation and output hashes, the colors, and the original and output
 timestamps. The AVI is lossless FFV1 with one frame per source frame and a constant cadence; the renderer decodes
 it to check frame count and dimensions. Rendering is not evidence of correct cells or tracking; open the outputs.
+
+## Viewing every frame
+
+`cell-views` exports every source frame as a lossless PNG at its original size, plus labelled,
+paginated contact sheets for orientation:
+
+```bash
+uv run cell-views --source data/timelapse1.avi --output runs/scratch/raw-views
+uv run cell-views --source data/timelapse1.avi --annotations runs/example/annotations.json \
+  --output runs/scratch/mask-review
+```
+
+Each output directory must be new. It contains `frames/`, `sheets/` and `frames.json` recording every
+frame's index, timestamp and hash, the source hash and, for overlays, the saved annotation hash and
+stable cell colors. After editing annotations, use a new review directory. `--width`, `--columns` and
+`--per-sheet` control contact sheets; individual frame PNGs always retain full resolution. Open each
+overlay and use close crops to assess pixels: generating images or viewing a sheet is not visual validation.
 
 ## Identity eval
 

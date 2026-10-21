@@ -14,9 +14,14 @@ def workspace_files(video: Path, video_name: str) -> dict[str, Path]:
     Every source must exist: Inspect treats an upload value that is not an existing path as the file's literal
     contents, so a missing source would silently give the agent a file containing just its path.
     """
+    source_file = ROOT / ".cache" / "sources" / f"{video_name}.txt"
+    source_file.parent.mkdir(parents=True, exist_ok=True)
+    if not source_file.exists():
+        source_file.write_text(video_name + "\n")
     files = {
         "/workspace/annotate.md": ROOT / "tasks/identity/annotate.md",
         "/workspace/target.md": ROOT / "tasks/identity/target.md",
+        "/workspace/source.txt": source_file,
         "/workspace/annotations.schema.json": write(SCHEMA_CACHE),
         f"/workspace/{video_name}": video,
         "/workspace/target.jpg": ROOT / "data/photo_2026-10-19_14-30-28.jpg",
@@ -27,6 +32,7 @@ def workspace_files(video: Path, video_name: str) -> dict[str, Path]:
         "/workspace/cell_tracking/hashing.py": ROOT / "cell_tracking/hashing.py",
         "/workspace/cell_tracking/masks.py": ROOT / "cell_tracking/masks.py",
         "/workspace/cell_tracking/render.py": ROOT / "cell_tracking/render.py",
+        "/workspace/cell_tracking/views.py": ROOT / "cell_tracking/views.py",
     }
     missing = [destination for destination, source in files.items() if not source.exists()]
     if missing:

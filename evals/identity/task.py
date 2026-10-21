@@ -90,7 +90,7 @@ def clip_variants(groups: str | None, margin: int) -> list[Variant]:
     return variants
 
 
-# Runs as root in the sandbox before the agent starts. Only the renderer is exposed; evaluation and
+# Runs as root before the agent starts. Rendering and frame views are exposed; evaluation and
 # checking code is never uploaded, and the agent user owns the workspace.
 def setup(agent: str) -> str:
     # Match the host uid so the Codex process can read/write a mode-0600 bind-mounted auth file.

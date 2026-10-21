@@ -15,7 +15,9 @@ Files here are the annotation agent's inputs: `annotate.md` (prompt), `target.md
 region) and `annotations.schema.json`
 (derived from the `CellMasks` pydantic model when the workspace is built, never committed, in place of a
 separate format document). The agent
-also gets the video and the reference image, uploaded as `target.jpg`.
+also gets the video and the reference image, uploaded as `target.jpg`. `source.txt` names the staged
+video so the ready-made commands in `annotate.md` work for either a full video or a clip. `cell-views`
+exports every raw or annotated frame and its contact sheets; only annotations are submitted for scoring.
 
 ## Run
 
@@ -47,4 +49,4 @@ about extra cells, missed unmarked cells or mask boundaries; see `data/eval/READ
 The agent-facing files (`annotate.md`, `target.md`, the launch prompt) say "cells" and "dark cells",
 and `target.md` states that cell type is not asserted, because it is not yet confirmed that these are
 neurons. Nothing the agent can read uses the word: the package is `cell_tracking`, the commands are `cell-*`, and the
-schema fields are `cells` and `cell_id`. See the terminology item in `TODO.md`.
+mask fields are `cell`, `frame` and `mask`. See the terminology item in `TODO.md`.

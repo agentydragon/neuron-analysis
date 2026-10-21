@@ -49,11 +49,12 @@ failing pairs are in the sample's score metadata.
 ## Sandbox
 
 A plain `python:3.12-slim` image pinned by digest (`compose.yaml`), with no Dockerfile. For either native
-agent Inspect uploads the prompt, target definition, schema, video, reference image (as `target.jpg`) and the renderer source
-(`cell_tracking/core.py`, `hashing.py`, `masks.py`, `render.py`) into `/workspace`, then runs a setup script as root that
+agent Inspect uploads the prompt, target definition, schema, video, reference image (as `target.jpg`),
+`source.txt` with the staged video filename, and the rendering/frame-view source
+(`cell_tracking/core.py`, `hashing.py`, `masks.py`, `render.py`, `views.py`) into `/workspace`, then runs a setup script as root that
 creates an `agent` user, installs the locked environment (`uv sync --locked --no-dev --group agent`, which
 adds numpy, scipy, scikit-image, opencv, matplotlib and imageio) and the selected, pinned CLI (Claude Code 2.1.305 or Codex 0.162.1). Setup takes
-about 40 seconds and needs network access. Only the renderer is exposed; check, identity and eval code is
+about 40 seconds and needs network access. The renderer and `cell-views` frame/contact-sheet tool are exposed; check, identity and eval code is
 never uploaded. The agent runs as `agent` with permissions bypassed inside the container. Codex's agent uid matches the
 host user so it can access a private auth file; when the launcher runs as root, Codex runs as root in
 its container. Containers have no host workspace mount and evaluation data stays on the host.
