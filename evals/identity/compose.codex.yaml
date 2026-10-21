@@ -1,0 +1,18 @@
+# Required by Inspect for the single writable auth bind below (so Codex can persist refreshes).
+x-inspect_docker_sandbox:
+  unsafe_allow_writable_host_mounts: true
+
+services:
+  default:
+    image: python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+    init: true
+    command: tail -f /dev/null
+    working_dir: /workspace
+    volumes:
+      # Only the login file is shared. Native Codex persists refreshed tokens to this file in place.
+      # Each sandbox has its own CODEX_HOME, configuration and conversation history.
+      - type: bind
+        source: ${CODEX_AUTH_FILE:?Use run-codex.sh or export CODEX_AUTH_FILE}
+        target: /run/codex-auth.json
+        bind:
+          create_host_path: false

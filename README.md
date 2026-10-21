@@ -90,8 +90,8 @@ cells only: nothing penalizes extra cells, and mask boundaries are not compared.
 
 - `tasks/identity/run.sh NAME` stages a clean workspace (prompt, target text, schema, video, reference image and
   renderer code, with no evaluation data) and launches Codex in it; see `tasks/identity/README.md`.
-- `evals/identity/` runs the same task as an Inspect eval in a Docker sandbox, with a Claude Code agent that can
-  use a subscription token instead of the metered API, including from inside a Claude Code on the web session;
+- `evals/identity/` runs the same task as an Inspect eval in a Docker sandbox, with native Codex or Claude Code
+  using your subscription login, including Claude Code on the web;
   see `evals/identity/README.md`.
 
 ## Source

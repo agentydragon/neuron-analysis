@@ -37,6 +37,7 @@ evals = [
     "inspect-ai>=0.3.282",
     "inspect-swe>=0.2.72",
     "jsonschema>=4.26.0",
+    "zipfile-zstd>=0.0.4",
 ]
 
 [tool.hatch.build.targets.wheel]

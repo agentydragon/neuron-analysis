@@ -359,6 +359,7 @@ evals = [
     { name = "inspect-ai" },
     { name = "inspect-swe" },
     { name = "jsonschema" },
+    { name = "zipfile-zstd" },
 ]
 
 [package.metadata]
@@ -386,6 +387,7 @@ evals = [
     { name = "inspect-ai", specifier = ">=0.3.282" },
     { name = "inspect-swe", specifier = ">=0.2.72" },
     { name = "jsonschema", specifier = ">=4.26.0" },
+    { name = "zipfile-zstd", specifier = ">=0.0.4" },
 ]
 
 [[package]]
