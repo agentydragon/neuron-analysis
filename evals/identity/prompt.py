@@ -9,4 +9,4 @@ def prompt(video: str) -> str:
     )
 
 
-PROMPT = prompt("IMG_6128.AVI")
+PROMPT = prompt("timelapse1.avi")

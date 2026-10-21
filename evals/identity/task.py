@@ -31,15 +31,22 @@ from inspect_swe import claude_code
 from evals.identity.files import workspace_files
 from evals.identity.prompt import prompt
 from evals.identity.stubs import OUTPUT, build
+from cell_tracking.hashing import hash_file
 from cell_tracking.clips import clip_marks, clip_range, cut_clip
 from cell_tracking.identity import IdentityMarks, evaluate
 
 ROOT = Path(__file__).resolve().parents[2]
 MARKS = ROOT / "data" / "eval" / "identity_marks.json"
-VIDEO = ROOT / "data" / "IMG_6128.AVI"
+VIDEO = ROOT / "data" / "timelapse1.avi"
 
 
 CLAUDE_CODE_VERSION = "2.1.305"
+
+
+def run_dir() -> Path:
+    """Where this run's saved answers and transcripts go: the launcher's tracked runs/<id>/ folder (RUN_DIR),
+    or the git-ignored runs/scratch for stubs and ad hoc runs."""
+    return Path(os.environ.get("RUN_DIR") or ROOT / "runs" / "scratch")
 
 
 @dataclass(frozen=True)
@@ -60,7 +67,7 @@ def full_variant() -> Variant:
 
 
 def clip_variants(groups: str | None, margin: int) -> list[Variant]:
-    """A lossless clip around each marked group (plus margin frames), cached under runs/clips."""
+    """A lossless clip around each marked group (plus margin frames), cached under .cache/clips."""
     marks = IdentityMarks.model_validate_json(MARKS.read_text())
     with av.open(str(VIDEO)) as container:
         frame_count = container.streams.video[0].frames
@@ -71,7 +78,8 @@ def clip_variants(groups: str | None, margin: int) -> list[Variant]:
     variants = []
     for group in (group for group in marks.groups if group.name in wanted):
         first, last = clip_range(group, margin, frame_count)
-        clip = ROOT / "runs" / "clips" / f"{group.name}_m{margin}" / "clip.avi"
+        # keyed by the source video's hash so a clip cut from another version of the video is never reused
+        clip = ROOT / ".cache" / "clips" / f"{hash_file(VIDEO)[:12]}_{group.name}_m{margin}" / "clip.avi"
         if not clip.exists():
             cut_clip(VIDEO, first, last, clip)
         variants.append(Variant(group.name, clip, clip.name, clip_marks(marks, group.name, first, clip), last - first + 1))
@@ -140,7 +148,7 @@ def claude_cli(model: str, effort: str | None, minutes: int):
         except TimeoutError:
             pass
         stream, stderr = await read_or_empty("/tmp/claude_stream.jsonl"), await read_or_empty("/tmp/claude_stderr.txt")
-        folder = ROOT / "runs" / "transcripts"
+        folder = run_dir() / "transcripts"
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}_{model}_{effort or 'default'}.jsonl"
         path.write_text(stream)
@@ -158,7 +166,7 @@ def identity_scorer(variants: dict[str, Variant]):
             text = await sandbox().read_file(OUTPUT)
         except FileNotFoundError:
             return failed("output/annotations.json was not written")
-        saved = ROOT / "runs" / "outputs" / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}.annotations.json"
+        saved = run_dir() / "outputs" / f"{time.strftime('%Y%m%dT%H%M%S')}_{state.sample_id}.annotations.json"
         saved.parent.mkdir(parents=True, exist_ok=True)
         saved.write_text(text)
         variant = variants[str(state.sample_id)]

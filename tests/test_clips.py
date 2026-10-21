@@ -61,3 +61,11 @@ def test_marks_follow_the_clip_with_shifted_frame_indices(tmp_path):
     assert group.frames == [1, 4]
     assert [mark.frame_index for mark in group.cells[0].marks] == [1, 4]
     assert shifted.source.path == "clip.avi" and shifted.source.sha256 != "a" * 64
+
+
+def test_clip_marks_rejects_a_clip_of_another_size(tmp_path):
+    clip = tmp_path / "clip.avi"
+    write_source(clip, 4)
+    marks = make_marks().model_copy(update={"source": Source(path="a.avi", sha256="a" * 64, width=64, height=48)})
+    with pytest.raises(ValueError, match="marks are for"):
+        clip_marks(marks, "3-6", 0, clip)
