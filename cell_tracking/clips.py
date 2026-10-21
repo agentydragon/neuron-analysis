@@ -53,5 +53,9 @@ def clip_marks(marks: IdentityMarks, group_name: str, first: int, clip: Path) ->
             for cell in group.cells
         ],
     )
+    with av.open(str(clip)) as container:
+        stream = container.streams.video[0]
+        if (stream.width, stream.height) != (marks.source.width, marks.source.height):
+            raise ValueError(f"{clip} is {stream.width}x{stream.height} but the marks are for {marks.source.width}x{marks.source.height}")
     source = Source(path=clip.name, sha256=hash_file(clip), width=marks.source.width, height=marks.source.height)
     return IdentityMarks(schema_version=1, source=source, groups=[shifted])

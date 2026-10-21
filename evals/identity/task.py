@@ -31,6 +31,7 @@ from inspect_swe import claude_code
 from evals.identity.files import workspace_files
 from evals.identity.prompt import prompt
 from evals.identity.stubs import OUTPUT, build
+from cell_tracking.hashing import hash_file
 from cell_tracking.clips import clip_marks, clip_range, cut_clip
 from cell_tracking.identity import IdentityMarks, evaluate
 
@@ -77,7 +78,8 @@ def clip_variants(groups: str | None, margin: int) -> list[Variant]:
     variants = []
     for group in (group for group in marks.groups if group.name in wanted):
         first, last = clip_range(group, margin, frame_count)
-        clip = ROOT / ".cache" / "clips" / f"{group.name}_m{margin}" / "clip.avi"
+        # keyed by the source video's hash so a clip cut from another version of the video is never reused
+        clip = ROOT / ".cache" / "clips" / f"{hash_file(VIDEO)[:12]}_{group.name}_m{margin}" / "clip.avi"
         if not clip.exists():
             cut_clip(VIDEO, first, last, clip)
         variants.append(Variant(group.name, clip, clip.name, clip_marks(marks, group.name, first, clip), last - first + 1))
