@@ -14,7 +14,7 @@ anecdotes. The findings come from the agents' own hand-off notes, the saved answ
 
 A fourth clip, 24-32, was lost twice: a container restart killed it, and a rerun was scored against marks at the
 wrong scale (a stale cached clip from the old video; fixed, the cache is now keyed by the video hash and the
-clip size is checked). That invalid result was not kept. The rerun on the new video goes in its own run folder.
+clip size is checked). That invalid result was not kept. The rerun on the new video is in `runs/20261021T0045Z_identity_clips_24-32/`: 3 of 6 marks hit, `all_pass` no, 127 cells annotated, 17 minutes of agent time.
 
 ## What we saw
 
