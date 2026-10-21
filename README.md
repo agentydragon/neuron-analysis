@@ -61,10 +61,10 @@ The renderer reads the video itself for dimensions and timing and gives each cel
 From the repository root, render one frame or the whole video:
 
 ```bash
-uv run cell-render --source "$PWD/data/IMG_6128.AVI" --annotations runs/example/annotations.json \
+uv run cell-render --source "$PWD/data/timelapse1.avi" --annotations runs/example/annotations.json \
   --frame 68 --output "$PWD/runs/renderer/frame_068.png"
 
-uv run cell-render --source "$PWD/data/IMG_6128.AVI" --annotations runs/example/annotations.json \
+uv run cell-render --source "$PWD/data/timelapse1.avi" --annotations runs/example/annotations.json \
   --output "$PWD/runs/renderer/annotated.avi"
 ```
 

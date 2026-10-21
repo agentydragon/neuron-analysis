@@ -18,7 +18,7 @@ def test_staged_workspace_has_inputs_and_no_evaluation_data(tmp_path):
     assert result.returncode == 0, result.stderr
     workspace = Path(result.stdout.strip())
     assert workspace == tmp_path / "cache" / "workspaces" / "identity_trial"
-    for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "IMG_6128.AVI", "pyproject.toml", "uv.lock"):
+    for name in ("annotate.md", "target.md", "annotations.schema.json", "target.jpg", "timelapse1.avi", "pyproject.toml", "uv.lock"):
         assert (workspace / name).is_file()
     assert (workspace / "output").is_dir()
     staged = {path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()}
@@ -89,7 +89,7 @@ def test_inspect_uploads_do_not_say_neuron():
     from evals.identity.files import ROOT as repo
     from evals.identity.files import workspace_files
 
-    for destination, source in workspace_files(repo / "data" / "IMG_6128.AVI", "IMG_6128.AVI").items():
+    for destination, source in workspace_files(repo / "data" / "timelapse1.avi", "timelapse1.avi").items():
         if Path(source).suffix.lower() not in (".avi", ".jpg"):
             assert "neuron" not in Path(source).read_text().lower(), destination
         assert "neuron" not in destination.lower()

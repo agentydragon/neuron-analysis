@@ -36,7 +36,7 @@ from cell_tracking.identity import IdentityMarks, evaluate
 
 ROOT = Path(__file__).resolve().parents[2]
 MARKS = ROOT / "data" / "eval" / "identity_marks.json"
-VIDEO = ROOT / "data" / "IMG_6128.AVI"
+VIDEO = ROOT / "data" / "timelapse1.avi"
 
 
 CLAUDE_CODE_VERSION = "2.1.305"

@@ -15,7 +15,7 @@ workspace="${CACHE_DIR:-$repo/.cache}/workspaces/identity_$name"
 mkdir -p "$workspace/output" "$run"
 cp "$repo/tasks/identity/annotate.md" "$repo/tasks/identity/target.md" "$workspace/"
 uv run --project "$repo" --no-sync python -m cell_tracking.schema --output "$workspace/annotations.schema.json"
-cp "$repo/data/IMG_6128.AVI" "$workspace/"
+cp "$repo/data/timelapse1.avi" "$workspace/"
 cp "$repo/data/photo_2026-10-19_14-30-28.jpg" "$workspace/target.jpg"
 cp "$repo/pyproject.toml" "$repo/uv.lock" "$repo/.python-version" "$workspace/"
 mkdir "$workspace/cell_tracking"
@@ -30,6 +30,6 @@ cd "$workspace"
 codex exec --model gpt-6-luna -c 'model_reasoning_effort="xhigh"' \
   --approve-for-me --json -C "$workspace" \
   --output-last-message "$run/handoff.md" \
-  "Read annotate.md and target.md. Process all frames from IMG_6128.AVI. The red outline in target.jpg marks the region whose dark cells to annotate. Save the annotations to output/annotations.json." \
+  "Read annotate.md and target.md. Process all frames from timelapse1.avi. The red outline in target.jpg marks the region whose dark cells to annotate. Save the annotations to output/annotations.json." \
   > "$run/codex_events.jsonl"
 cp "$workspace/output/annotations.json" "$run/annotations.json" 2>/dev/null || echo "no output/annotations.json was written" >&2

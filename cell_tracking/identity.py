@@ -13,7 +13,7 @@ from pydantic import Field, StrictInt, ValidationError, computed_field, model_va
 from cell_tracking.core import Mask, Record, Source
 from cell_tracking.eval_frames import FramesManifest
 from cell_tracking.hashing import hash_file
-from cell_tracking.masks import CellMasks
+from cell_tracking.masks import CellMasks, VideoInfo
 
 type Pixels = set[tuple[int, int]]
 
@@ -169,6 +169,42 @@ def derive(frames_dir: Path, marked_dir: Path) -> IdentityMarks:
     return IdentityMarks(schema_version=1, source=source, groups=groups)
 
 
+def scale_pixels(pixels: Pixels, old: tuple[int, int], new: tuple[int, int]) -> Pixels:
+    """Nearest-neighbor resample: a new pixel is marked when the old pixel under its center was."""
+    (old_w, old_h), (new_w, new_h) = old, new
+    xs: dict[int, list[int]] = {}
+    for x in range(new_w):
+        xs.setdefault(min(old_w - 1, x * old_w // new_w), []).append(x)
+    ys: dict[int, list[int]] = {}
+    for y in range(new_h):
+        ys.setdefault(min(old_h - 1, y * old_h // new_h), []).append(y)
+    return {(nx, ny) for x, y in pixels for nx in xs.get(x, []) for ny in ys.get(y, [])}
+
+
+def rescale(marks: IdentityMarks, source: Source) -> IdentityMarks:
+    """The same marks on a version of the video with another frame size (same frames, no crop), pointing at `source`."""
+    old, new = (marks.source.width, marks.source.height), (source.width, source.height)
+    groups = [
+        group.model_copy(
+            update={
+                "cells": [
+                    cell.model_copy(
+                        update={
+                            "marks": [
+                                FrameMark(frame_index=mark.frame_index, pixels=to_runs(scale_pixels(to_pixels(mark.pixels), old, new)))
+                                for mark in cell.marks
+                            ]
+                        }
+                    )
+                    for cell in group.cells
+                ]
+            }
+        )
+        for group in marks.groups
+    ]
+    return IdentityMarks(schema_version=1, source=source, groups=groups)
+
+
 class MarkMatch(Record):
     """How the predicted cells cover one of your marks."""
 
@@ -318,6 +354,10 @@ def main() -> None:
     derive_parser.add_argument("--frames", required=True, type=Path, help="Directory of original frames")
     derive_parser.add_argument("--marked", required=True, type=Path, help="Directory of one folder per group")
     derive_parser.add_argument("--output", required=True, type=Path)
+    rescale_parser = commands.add_parser("rescale", help="Resample marks onto a video with another frame size")
+    rescale_parser.add_argument("--marks", required=True, type=Path)
+    rescale_parser.add_argument("--source", required=True, type=Path, help="The video the marks should point at")
+    rescale_parser.add_argument("--output", required=True, type=Path)
     check_parser = commands.add_parser("check", help="Score annotations against identity marks")
     check_parser.add_argument("--annotations", required=True, type=Path)
     check_parser.add_argument("--marks", required=True, type=Path)
@@ -328,6 +368,13 @@ def main() -> None:
         print(json.dumps({group.name: [cell.color for cell in group.cells] for group in marks.groups}))
         return
     marks = IdentityMarks.model_validate_json(arguments.marks.read_bytes())
+    if arguments.command == "rescale":
+        info = VideoInfo.probe(arguments.source)
+        source = Source(path=arguments.source.name, sha256=hash_file(arguments.source), width=info.width, height=info.height)
+        scaled = rescale(marks, source)
+        arguments.output.write_text(scaled.model_dump_json(indent=1) + "\n")
+        print(json.dumps({"width": info.width, "height": info.height, "frames": len(info.timestamps_s)}))
+        return
     evaluation = evaluate(arguments.annotations.read_bytes(), marks)
     print(evaluation.model_dump_json(indent=2))
     if not evaluation.all_pass:

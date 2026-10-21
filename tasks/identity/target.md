@@ -1,7 +1,7 @@
-# IMG_6128 target region
+# Timelapse target region
 
 These constraints apply to this sample, not to the general workflow. They also apply to
-clips cut from `IMG_6128.AVI`.
+clips cut from `timelapse1.avi`.
 
 Annotate the **dark cells** along the side/belly of the embryo, in the band inside the red
 outline in `target.jpg`. Follow that region as the embryo moves and

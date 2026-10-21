@@ -185,3 +185,21 @@ def test_a_pixel_under_several_cells_is_split_evenly_between_them():
     assert match.shares == {"a": pytest.approx(0.5), "b": pytest.approx(0.5)}
 
 
+
+
+def test_rescale_resamples_marks_onto_a_larger_video():
+    from cell_tracking.core import Source
+    from cell_tracking.identity import Cell, FrameMark, Group, IdentityMarks, rescale, scale_pixels
+
+    cell = Cell(color="#ff0000", marks=[FrameMark(frame_index=0, pixels=[(2, 1, 3), (3, 1, 3)])])
+    marks = IdentityMarks(
+        schema_version=1,
+        source=Source(path="a.avi", sha256="a" * 64, width=8, height=6),
+        groups=[Group(name="g", frames=[0], cells=[cell])],
+    )
+    target = Source(path="b.avi", sha256="b" * 64, width=16, height=12)
+    scaled = rescale(marks, target)
+    assert scaled.source == target
+    # 2x in both directions: each old pixel becomes a 2x2 block, so 4 pixels -> 16
+    assert len(to_pixels(scaled.groups[0].cells[0].marks[0].pixels)) == 16
+    assert scale_pixels({(0, 0)}, (4, 4), (6, 6)) == {(0, 0), (1, 0), (0, 1), (1, 1)}

@@ -1,6 +1,10 @@
 # Identity-mark eval frames
 
-Evaluator-only inputs; keep them out of any annotation agent's workspace.
+Evaluator-only inputs; `frames/` and `marked/` are at the resolution the marks were painted at (the 1280 × 944
+`IMG_6128.AVI`), while the committed `identity_marks.json` is resampled onto the full-resolution `timelapse1.avi`
+(1376 × 1024, nearest neighbor; the two videos differ by a pure scale, the marks were drawn conservatively inside
+the cells, and the resampling is the only change).
+ keep them out of any annotation agent's workspace.
 `frames/` holds lossless PNGs of the marked source frames (frame index = decode order,
 as in `cell-render`), `frames.json` pins the source SHA-256 and each PNG's hash.
 Regenerate with `uv run cell-eval-frames --source data/IMG_6128.AVI --output data/eval --frame N ...`; add `--sheets` for labelled contact sheets of all frames (not committed).
@@ -32,6 +36,8 @@ colours may be reused for different cells in other groups, and one frame may app
 
 ```bash
 uv run cell-identity derive --frames data/eval/frames --marked data/eval/marked \
+  --output "$TMPDIR/marks_1280x944.json"
+uv run cell-identity rescale --marks "$TMPDIR/marks_1280x944.json" --source data/timelapse1.avi \
   --output data/eval/identity_marks.json
 uv run cell-identity check --annotations runs/<run>/annotations.json \
   --marks data/eval/identity_marks.json

@@ -10,6 +10,11 @@
       "file": "photo_2026-10-19_14-30-28.jpg",
       "bytes": 91642,
       "sha256": "61d6be45767abdcd4e549212638bdfdcd5d83fca4285f8ccc99c4184b0a9e0a2"
+    },
+    {
+      "file": "timelapse1.avi",
+      "bytes": 10015744,
+      "sha256": "36d2a3aa7065af6a14f87e397895e6871e412bba7851f4a86e7f6203735d10ed"
     }
   ]
 }
